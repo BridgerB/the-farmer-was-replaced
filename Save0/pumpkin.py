@@ -14,24 +14,35 @@ def farm_cycle():
     size = get_world_size()
     total = size * size
 
-    # Phase 1: Plant all pumpkins, track all positions
+    # Early exit if no carrots - let main.py switch to carrot farming
+    if num_items(Items.Carrot) == 0:
+        return
+
+    # Phase 1: Plant pumpkins everywhere
     movement.go_to_start()
     not_ready = []
+
     for i in range(total):
+        # Till
         if get_ground_type() != Grounds.Soil:
             till()
+
+        # Water
         if get_water() < 0.8 and num_items(Items.Water) > 0:
             use_item(Items.Water)
+
+        # Harvest non-pumpkins
         if can_harvest() and get_entity_type() != Entities.Pumpkin:
             harvest()
-        if get_entity_type() == None:
-            if num_items(Items.Carrot) > 0:
-                plant(Entities.Pumpkin)
+
+        # Try to plant pumpkin (works on empty, works on dead, fails on growing)
+        if num_items(Items.Carrot) > 0:
+            plant(Entities.Pumpkin)
 
         not_ready.append([get_pos_x(), get_pos_y()])
         movement.move_next()
 
-    # Phase 2: Only visit unconfirmed positions
+    # Phase 2: Wait for all to be ready
     while len(not_ready) > 0:
         still_not_ready = []
 
@@ -42,15 +53,20 @@ def farm_cycle():
                 use_item(Items.Water)
 
             if can_harvest():
-                pass
+                pass  # Ready
             else:
+                # Not ready - try to plant (handles dead pumpkins)
                 if num_items(Items.Carrot) > 0:
                     plant(Entities.Pumpkin)
                 still_not_ready.append(pos)
 
+        # Abort if out of carrots and have dead pumpkins
+        if len(still_not_ready) > 0 and num_items(Items.Carrot) == 0:
+            return
+
         not_ready = still_not_ready
 
-    # Phase 3: Harvest the giant
+    # Phase 3: Harvest
     movement.go_to_start()
     harvest()
 

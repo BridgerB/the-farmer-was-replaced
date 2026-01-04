@@ -62,13 +62,71 @@ def farm_one_cycle(resource):
     elif resource == "sunflower":
         sunflower.farm_cycle()
 
+def check_dependencies(mode):
+    # Only switch modes if completely out of required resource
+    if mode == "pumpkin" or mode == "sunflower":
+        if num_items(Items.Carrot) == 0:
+            # Need carrots - but first check carrot dependencies
+            if num_items(Items.Hay) == 0:
+                return "hay"
+            if num_items(Items.Wood) == 0:
+                return "wood"
+            return "carrot"
+
+    if mode == "carrot":
+        if num_items(Items.Hay) == 0:
+            return "hay"
+        if num_items(Items.Wood) == 0:
+            return "wood"
+
+    return mode  # Dependencies met
+
+def can_afford(entity):
+    cost = get_cost(entity)
+    for item in cost:
+        if num_items(item) < cost[item]:
+            return False
+    return True
+
+def get_missing_resource(entity):
+    # Returns which resource we're short on, or None if we can afford
+    cost = get_cost(entity)
+    for item in cost:
+        if num_items(item) < cost[item]:
+            return item
+    return None
+
 def main():
     while True:
-        if FARM_MODE == "auto":
+        if FARM_MODE == "pumpkin":
+            if can_afford(Entities.Pumpkin):
+                pumpkin.farm_cycle()
+            elif can_afford(Entities.Carrot):
+                carrot.farm_cycle()
+            else:
+                # Need resources for carrots - check what's missing
+                missing = get_missing_resource(Entities.Carrot)
+                if missing == Items.Hay:
+                    hay.farm_cycle()
+                else:
+                    tree.farm_cycle()
+        elif FARM_MODE == "sunflower":
+            if can_afford(Entities.Sunflower):
+                sunflower.farm_cycle()
+            elif can_afford(Entities.Carrot):
+                carrot.farm_cycle()
+            else:
+                missing = get_missing_resource(Entities.Carrot)
+                if missing == Items.Hay:
+                    hay.farm_cycle()
+                else:
+                    tree.farm_cycle()
+        elif FARM_MODE == "auto":
             resource = get_what_to_farm()
+            farm_one_cycle(resource)
         else:
-            resource = FARM_MODE
-        farm_one_cycle(resource)
+            resource = check_dependencies(FARM_MODE)
+            farm_one_cycle(resource)
 
 if __name__ == "__main__":
     main()

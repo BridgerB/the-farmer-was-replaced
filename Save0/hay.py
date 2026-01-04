@@ -5,9 +5,13 @@ def process_tile():
     if can_harvest():
         harvest()
 
-    # Convert soil back to grass for hay
+    # If soil, till to convert back to turf for grass
     if get_ground_type() == Grounds.Soil:
         till()
+
+    # Plant grass if empty
+    if get_entity_type() == None:
+        plant(Entities.Grass)
 
 def farm_cycle():
     movement.traverse_all(process_tile)
