@@ -4,10 +4,19 @@ import tree
 import carrot
 import pumpkin
 import sunflower
+import maze
+import weird_substance
 import movement
 
-# Override: "auto", "hay", "wood", "carrot", "pumpkin", "sunflower"
-FARM_MODE = "pumpkin"
+# Override: "auto", "hay", "wood", "carrot", "pumpkin", "sunflower", "maze"
+FARM_MODE = "maze"
+
+def random_move():
+	# Try to unstick by moving in any available direction
+	for d in [North, East, South, West]:
+		if move(d):
+			return True
+	return False
 
 def get_what_to_farm():
 	h = num_items(Items.Hay)
@@ -121,6 +130,15 @@ def main():
 					hay.farm_cycle()
 				else:
 					tree.farm_cycle()
+		elif FARM_MODE == "maze":
+			# Calculate weird substance needed for maze
+			size = get_world_size()
+			substance_needed = size * (2 ** max(0, num_unlocked(Unlocks.Mazes) - 1))
+			if num_items(Items.Weird_Substance) >= substance_needed:
+				maze.farm_cycle()
+			else:
+				# Need more weird substance - farm fertilized grass
+				weird_substance.farm_cycle()
 		elif FARM_MODE == "auto":
 			resource = get_what_to_farm()
 			farm_one_cycle(resource)
