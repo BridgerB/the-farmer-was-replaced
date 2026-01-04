@@ -49,28 +49,76 @@ def get_directions_towards(tx, ty):
 
 	return dirs
 
-def solve_maze():
-	# Smart pathfinding using measure() to know treasure location
-	visited = []
-	path = []
-	max_steps = 10000
+def make_drone_solver(priority_dirs):
+	# Factory function to create drone with specific direction priority
+	def solver():
+		visited = []
+		path = []
 
-	# Get treasure position
+		# Check we're still in a maze
+		while get_entity_type() == Entities.Hedge or get_entity_type() == Entities.Treasure:
+			if get_entity_type() == Entities.Treasure:
+				harvest()
+				return
+
+			pos = (get_pos_x(), get_pos_y())
+			if pos not in visited:
+				visited.append(pos)
+
+			moved = False
+			for direction in priority_dirs:
+				if can_move(direction):
+					next_pos = get_next_pos(direction)
+					if next_pos not in visited:
+						move(direction)
+						path.append(direction)
+						moved = True
+						break
+
+			if not moved and len(path) > 0:
+				last = path.pop()
+				move(opposite(last))
+			elif not moved:
+				break
+
+	return solver
+
+def solve_maze():
+	# Check we're in a maze
+	if get_entity_type() != Entities.Hedge and get_entity_type() != Entities.Treasure:
+		return
+
 	tx, ty = measure()
 
-	steps = 0
-	while get_entity_type() != Entities.Treasure and steps < max_steps:
-		steps = steps + 1
+	# Different strategies for different drones
+	strategies = [
+		[North, East, South, West],  # North first
+		[East, North, West, South],  # East first
+		[South, West, North, East],  # South first
+		[West, South, East, North],  # West first
+	]
+
+	# Spawn drones with different strategies
+	for i in range(len(strategies)):
+		if num_drones() < max_drones():
+			spawn_drone(make_drone_solver(strategies[i]))
+
+	# Main drone uses smart pathfinding towards treasure
+	visited = []
+	path = []
+
+	while get_entity_type() == Entities.Hedge or get_entity_type() == Entities.Treasure:
+		if get_entity_type() == Entities.Treasure:
+			harvest()
+			return
+
 		pos = (get_pos_x(), get_pos_y())
 		if pos not in visited:
 			visited.append(pos)
 
-		# Get directions prioritized towards treasure
-		directions = get_directions_towards(tx, ty)
-
-		# Try each direction, preferring ones towards treasure
+		dirs = get_directions_towards(tx, ty)
 		moved = False
-		for direction in directions:
+		for direction in dirs:
 			if can_move(direction):
 				next_pos = get_next_pos(direction)
 				if next_pos not in visited:
@@ -79,14 +127,11 @@ def solve_maze():
 					moved = True
 					break
 
-		# Dead end - backtrack
 		if not moved and len(path) > 0:
 			last = path.pop()
 			move(opposite(last))
-		elif not moved and len(path) == 0:
+		elif not moved:
 			break
-
-	harvest()
 
 def farm_cycle():
 	# If already in a maze, just solve it

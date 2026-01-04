@@ -9,7 +9,7 @@ import weird_substance
 import movement
 
 # Override: "auto", "hay", "wood", "carrot", "pumpkin", "sunflower", "maze"
-FARM_MODE = "maze"
+FARM_MODE = "auto"
 
 def random_move():
 	# Try to unstick by moving in any available direction
@@ -108,21 +108,35 @@ def get_missing_resource(entity):
 def main():
 	while True:
 		if FARM_MODE == "pumpkin":
-			if can_afford(Entities.Pumpkin):
-				pumpkin.farm_cycle()
-			elif can_afford(Entities.Carrot):
-				carrot.farm_cycle()
-			else:
-				# Need resources for carrots - check what's missing
-				missing = get_missing_resource(Entities.Carrot)
-				if missing == Items.Hay:
-					hay.farm_cycle()
+			# Check carrot dependencies first - don't waste carrots if we can't make more
+			if num_items(Items.Hay) < 10:
+				hay.farm_cycle()
+			elif num_items(Items.Wood) < 10:
+				tree.farm_cycle()
+			elif num_items(Items.Carrot) < 1000:
+				# Build up carrot buffer before pumpkin farming
+				if can_afford(Entities.Carrot):
+					carrot.farm_cycle()
 				else:
-					tree.farm_cycle()
+					hay.farm_cycle()
+			elif can_afford(Entities.Pumpkin):
+				pumpkin.farm_cycle()
+			else:
+				carrot.farm_cycle()
 		elif FARM_MODE == "sunflower":
-			if can_afford(Entities.Sunflower):
-				sunflower.farm_cycle()
-			elif can_afford(Entities.Carrot):
+			# Always run sunflower cycle - it will harvest existing sunflowers
+			# and only plant new ones if we have carrots
+			sunflower.farm_cycle()
+			# Then check if we need resources
+			if num_items(Items.Carrot) < 100:
+				if can_afford(Entities.Carrot):
+					carrot.farm_cycle()
+				elif num_items(Items.Hay) < 10:
+					hay.farm_cycle()
+				elif num_items(Items.Wood) < 10:
+					tree.farm_cycle()
+		elif FARM_MODE == "carrot":
+			if can_afford(Entities.Carrot):
 				carrot.farm_cycle()
 			else:
 				missing = get_missing_resource(Entities.Carrot)
@@ -131,14 +145,17 @@ def main():
 				else:
 					tree.farm_cycle()
 		elif FARM_MODE == "maze":
-			# Calculate weird substance needed for maze
-			size = get_world_size()
-			substance_needed = size * (2 ** max(0, num_unlocked(Unlocks.Mazes) - 1))
-			if num_items(Items.Weird_Substance) >= substance_needed:
-				maze.farm_cycle()
+			# If stuck in maze, solve it first
+			if get_entity_type() == Entities.Hedge or get_entity_type() == Entities.Treasure:
+				maze.solve_maze()
 			else:
-				# Need more weird substance - farm fertilized grass
-				weird_substance.farm_cycle()
+				# Not in maze - check if we can create one
+				size = get_world_size()
+				substance_needed = size * (2 ** max(0, num_unlocked(Unlocks.Mazes) - 1))
+				if num_items(Items.Weird_Substance) >= substance_needed:
+					maze.farm_cycle()
+				else:
+					weird_substance.farm_cycle()
 		elif FARM_MODE == "auto":
 			resource = get_what_to_farm()
 			farm_one_cycle(resource)
