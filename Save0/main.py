@@ -8,7 +8,7 @@ import sunflower
 import substance
 import maze
 
-MODE = "auto"
+MODE = "sunflower"
 CARROT_BUFFER = 1000
 
 def run_crop(name):
