@@ -2,9 +2,8 @@ import nav
 import drone
 import logs
 
-def plant_and_measure(start_col, end_col):
+def plant_zone(start_col, end_col):
 	size = get_world_size()
-	sunflowers = []
 	for pos in nav.s_shape_range(start_col, end_col, size):
 		nav.go_to(pos[0], pos[1])
 		if get_ground_type() != Grounds.Soil:
@@ -14,68 +13,67 @@ def plant_and_measure(start_col, end_col):
 			harvest()
 		if get_entity_type() == None and num_items(Items.Carrot) > 0:
 			plant(Entities.Sunflower)
-		if get_entity_type() == Entities.Sunflower:
-			sunflowers.append([pos[0], pos[1], measure()])
-	return sunflowers
-
-def wait_for_ready(sunflowers):
-	not_ready = sunflowers[:]
-	while len(not_ready) > 0:
-		still_waiting = []
-		for sf in not_ready:
-			nav.go_to(sf[0], sf[1])
-			if get_entity_type() == Entities.Sunflower and not can_harvest():
-				still_waiting.append(sf)
-		not_ready = still_waiting
-
-def harvest_petals(start_x, start_y, target):
-	size = get_world_size()
-	found = True
-	while found:
-		found = False
-		for i in range(size * size):
-			x = (start_x + i // size) % size
-			y = (start_y + i % size) % size
-			nav.go_to(x, y)
-			if get_entity_type() == Entities.Sunflower:
-				if measure() == target and can_harvest():
-					harvest()
-					found = True
 
 def make_plant_worker(start_col, end_col):
 	def worker():
-		sfs = plant_and_measure(start_col, end_col)
-		wait_for_ready(sfs)
+		plant_zone(start_col, end_col)
 	return worker
 
-def make_harvest_worker(start_x, start_y, target):
-	def worker():
-		harvest_petals(start_x, start_y, target)
-	return worker
-
-def spawn_plant_workers():
-	zones = drone.get_zone_bounds()
-	for i in range(1, len(zones)):
-		spawn_drone(make_plant_worker(zones[i][0], zones[i][1]))
-
-def spawn_harvest_workers(target):
+def scan_field():
 	size = get_world_size()
-	starts = [[size - 1, 0], [0, size - 1], [size - 1, size - 1]]
-	zones = drone.get_zone_bounds()
-	for i in range(1, len(zones)):
-		if i - 1 < len(starts):
-			spawn_drone(make_harvest_worker(starts[i-1][0], starts[i-1][1], target))
+	petal_map = {}
+	for i in range(7, 16):
+		petal_map[i] = []
+	for pos in nav.s_shape_range(0, size, size):
+		nav.go_to(pos[0], pos[1])
+		if get_entity_type() == Entities.Sunflower:
+			petals = measure()
+			petal_map[petals].append((pos[0], pos[1]))
+	return petal_map
+
+def wait_for_ready(petal_map):
+	for petals in petal_map:
+		if len(petal_map[petals]) > 0:
+			pos = petal_map[petals][0]
+			nav.go_to(pos[0], pos[1])
+			while not can_harvest():
+				pass
+			return
+
+def make_harvest_worker(positions):
+	def worker():
+		for pos in positions:
+			nav.go_to(pos[0], pos[1])
+			if get_entity_type() == Entities.Sunflower:
+				if can_harvest():
+					harvest()
+	return worker
+
+def harvest_petal_parallel(positions):
+	if len(positions) == 0:
+		return
+	total = max_drones()
+	chunk = max(1, (len(positions) + total - 1) // total)
+	for i in range(1, total):
+		start = i * chunk
+		end = min(start + chunk, len(positions))
+		if start < len(positions):
+			spawn_drone(make_harvest_worker(positions[start:end]))
+	for pos in positions[0:chunk]:
+		nav.go_to(pos[0], pos[1])
+		if get_entity_type() == Entities.Sunflower:
+			if can_harvest():
+				harvest()
+	drone.wait_for_workers()
 
 def cycle():
 	logs.log("sunflower cycle")
 	drone.wait_for_workers()
-	spawn_plant_workers()
+	drone.spawn_zone_workers(make_plant_worker)
 	zone = drone.get_main_zone()
-	my_sfs = plant_and_measure(zone[0], zone[1])
-	wait_for_ready(my_sfs)
+	plant_zone(zone[0], zone[1])
 	drone.wait_for_workers()
-
+	petal_map = scan_field()
+	wait_for_ready(petal_map)
 	for target in range(15, 6, -1):
-		spawn_harvest_workers(target)
-		harvest_petals(0, 0, target)
-		drone.wait_for_workers()
+		harvest_petal_parallel(petal_map[target])
