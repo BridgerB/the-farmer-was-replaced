@@ -1,32 +1,16 @@
-def move_snake(row):
-    if row % 2 == 0:
-        if get_pos_x() == get_world_size() - 1:
-            move(South)
-        else:
-            move(East)
-    else:
-        if get_pos_x() == 0:
-            move(South)
-        else:
-            move(West)
+import movement
 
-def do_tile():
-    # Always harvest anything ready
+def process_tile():
+    # Harvest if ready
     if can_harvest():
         harvest()
-    # Plant bush if empty or try to clear dead stuff
-    if get_entity_type() == None:
-        plant(Entities.Bush)
-    elif not can_harvest():
-        # Try planting over dead pumpkins etc
+
+    # Plant bush if empty or dead
+    if not can_harvest():
         plant(Entities.Bush)
 
 def farm_cycle():
-    size = get_world_size()
-    for row in range(size):
-        for col in range(size):
-            do_tile()
-            move_snake(row)
+    movement.traverse_all(process_tile)
 
 def farm_wood():
     while True:

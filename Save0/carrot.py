@@ -1,34 +1,21 @@
-def move_clockwise():
-    x = get_pos_x()
-    y = get_pos_y()
-    size = get_world_size()
-    if y == size - 1 and x < size - 1:
-        move(East)
-    elif x == size - 1 and y > 0:
-        move(South)
-    elif y == 0 and x > 0:
-        move(West)
-    elif x == 0 and y < size - 1:
-        move(North)
-    else:
-        move(East)
+import movement
 
-def do_tile():
-    # Always harvest anything ready
+def process_tile():
+    # Harvest if ready
     if can_harvest():
         harvest()
-    # Ensure soil for carrots
+
+    # Ensure soil
     if get_ground_type() != Grounds.Soil:
         till()
-    # Plant if empty or clear dead stuff
-    if get_entity_type() == None or not can_harvest():
-        plant(Entities.Carrot)
+
+    # Plant if we have resources and tile is empty or dead
+    if num_items(Items.Hay) > 0 and num_items(Items.Wood) > 0:
+        if not can_harvest():
+            plant(Entities.Carrot)
 
 def farm_cycle():
-    size = get_world_size()
-    for i in range(size * size):
-        do_tile()
-        move_clockwise()
+    movement.traverse_all(process_tile)
 
 def farm_carrot():
     while True:
