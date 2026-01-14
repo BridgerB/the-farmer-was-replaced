@@ -14,139 +14,107 @@ def make_clear_worker(x_start, x_end, y_start, y_end):
 		clear_zone(x_start, x_end, y_start, y_end)
 	return worker
 
-def get_dir_to(x, y, tx, ty):
-	if tx > x:
-		return East
-	if tx < x:
-		return West
-	if ty > y:
-		return North
-	if ty < y:
-		return South
-	return None
+def dir_name(d):
+	if d == North:
+		return "N"
+	if d == South:
+		return "S"
+	if d == East:
+		return "E"
+	if d == West:
+		return "W"
+	return "?"
 
-def is_safe_shortcut(curr_idx, target_idx, tail_indices, total):
-	if target_idx == (curr_idx + 1) % total:
-		return True
-	if target_idx <= curr_idx:
-		return False
-	if len(tail_indices) == 0:
-		return True
-	for t_idx in tail_indices:
-		if curr_idx < t_idx < target_idx:
-			return False
-	return True
+def find_path(start_x, start_y, target_x, target_y, tail, size):
+	if start_x == target_x and start_y == target_y:
+		return []
+	blocked = {}
+	for i in range(1, len(tail)):
+		blocked[tail[i]] = True
+	parent = {}
+	parent[(start_x, start_y)] = None
+	queue = [(start_x, start_y)]
+	found = False
+	visited_count = 0
+	while len(queue) > 0:
+		x, y = queue[0]
+		queue = queue[1:]
+		visited_count = visited_count + 1
+		if visited_count % 100 == 0:
+			quick_print("BFS visited " + str(visited_count) + " at (" + str(x) + "," + str(y) + ")")
+		for d in [North, East, South, West]:
+			nx, ny = x, y
+			if d == North:
+				ny = y + 1
+			elif d == South:
+				ny = y - 1
+			elif d == East:
+				nx = x + 1
+			else:
+				nx = x - 1
+			if nx < 0 or nx >= size or ny < 0 or ny >= size:
+				continue
+			if (nx, ny) in blocked:
+				continue
+			if (nx, ny) in parent:
+				continue
+			parent[(nx, ny)] = (x, y, d)
+			if nx == target_x and ny == target_y:
+				found = True
+				break
+			queue.append((nx, ny))
+		if found:
+			break
+	quick_print("BFS done: visited=" + str(visited_count) + " found=" + str(found))
+	if not found:
+		return None
+	path = []
+	cx, cy = target_x, target_y
+	while parent[(cx, cy)] != None:
+		px, py, d = parent[(cx, cy)]
+		path.append(d)
+		cx, cy = px, py
+	reversed_path = []
+	for i in range(len(path) - 1, -1, -1):
+		reversed_path.append(path[i])
+	return reversed_path
 
 def chase_apples():
 	size = get_world_size()
-	total = size * size
-	path = []
-	for col in range(size):
-		if col % 2 == 0:
-			for row in range(size):
-				path.append((col, row))
-		else:
-			for row in range(size - 1, -1, -1):
-				path.append((col, row))
-	path_idx = {}
-	for i in range(total):
-		path_idx[path[i]] = i
 	tail = []
 	apples = 0
 	target_x = -1
 	target_y = -1
+	planned_path = []
 	move_count = 0
 	while True:
 		x = get_pos_x()
 		y = get_pos_y()
-		curr_idx = path_idx[(x, y)]
-		quick_print("pos=(" + str(x) + "," + str(y) + ") idx=" + str(curr_idx) + " apples=" + str(apples))
+		quick_print("move " + str(move_count) + " pos=(" + str(x) + "," + str(y) + ") apples=" + str(apples))
 		if get_entity_type() == Entities.Apple:
 			apples = apples + 1
 			target_x, target_y = measure()
 			quick_print("ATE! next=(" + str(target_x) + "," + str(target_y) + ")")
-		tail_indices = []
-		for pos in tail:
-			tail_indices.append(path_idx[pos])
-		quick_print("tail_idx=" + str(tail_indices))
-		moved = False
-		if target_x >= 0 and target_x < size and target_y >= 0 and target_y < size:
-			target_idx = path_idx[(target_x, target_y)]
-			best_dir = None
-			best_idx = -1
-			for try_d in [North, East, South, West]:
-				if try_d == North:
-					nx, ny = x, y + 1
-				elif try_d == South:
-					nx, ny = x, y - 1
-				elif try_d == East:
-					nx, ny = x + 1, y
-				else:
-					nx, ny = x - 1, y
-				if nx < 0 or nx >= size or ny < 0 or ny >= size:
-					continue
-				next_idx = path_idx[(nx, ny)]
-				if not is_safe_shortcut(curr_idx, next_idx, tail_indices, total):
-					continue
-				if next_idx > best_idx:
-					if target_idx > curr_idx:
-						if next_idx <= target_idx:
-							best_idx = next_idx
-							best_dir = try_d
-					else:
-						best_idx = next_idx
-						best_dir = try_d
-			if best_dir != None:
-				quick_print("shortcut to idx=" + str(best_idx))
-				if move(best_dir):
-					tail.append((x, y))
-					while len(tail) > apples:
-						tail.pop(0)
-					moved = True
-					quick_print("SHORTCUT OK")
-		if not moved:
-			next_cycle_idx = curr_idx + 1
-			if next_cycle_idx < total:
-				nx, ny = path[next_cycle_idx]
-				d = get_dir_to(x, y, nx, ny)
-				if d != None:
-					if move(d):
-						tail.append((x, y))
-						while len(tail) > apples:
-							tail.pop(0)
-						moved = True
-						quick_print("CYCLE OK")
-		if not moved:
-			tail_set = {}
-			for pos in tail:
-				tail_set[pos] = True
-			for try_d in [North, East, South, West]:
-				if try_d == North:
-					nx, ny = x, y + 1
-				elif try_d == South:
-					nx, ny = x, y - 1
-				elif try_d == East:
-					nx, ny = x + 1, y
-				else:
-					nx, ny = x - 1, y
-				if nx < 0 or nx >= size or ny < 0 or ny >= size:
-					continue
-				if (nx, ny) in tail_set:
-					continue
-				quick_print("fallback to (" + str(nx) + "," + str(ny) + ")")
-				if move(try_d):
-					tail.append((x, y))
-					while len(tail) > apples:
-						tail.pop(0)
-					moved = True
-					quick_print("FALLBACK OK")
-					break
-		if not moved:
+			planned_path = find_path(x, y, target_x, target_y, tail, size)
+			if planned_path == None:
+				quick_print("NO PATH!")
+				break
+			path_str = ""
+			for d in planned_path:
+				path_str = path_str + dir_name(d)
+			quick_print("PATH=" + path_str)
+		if len(planned_path) == 0:
 			quick_print("STUCK")
 			break
-		move_count = move_count + 1
-		if move_count > total * 2:
-			quick_print("TOO MANY MOVES")
+		d = planned_path[0]
+		planned_path = planned_path[1:]
+		if move(d):
+			tail.append((x, y))
+			while len(tail) > apples:
+				tail.pop(0)
+			move_count = move_count + 1
+		else:
+			quick_print("MOVE FAILED! tail=" + str(tail))
 			break
 	logs.log("done: " + str(apples) + " apples")
 
