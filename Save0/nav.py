@@ -1,12 +1,16 @@
 def go_to(x, y):
 	while get_pos_x() < x:
-		move(East)
+		if not move(East):
+			break
 	while get_pos_x() > x:
-		move(West)
+		if not move(West):
+			break
 	while get_pos_y() < y:
-		move(North)
+		if not move(North):
+			break
 	while get_pos_y() > y:
-		move(South)
+		if not move(South):
+			break
 
 def s_shape_range(x_start, x_end, y_start, y_end):
 	positions = []

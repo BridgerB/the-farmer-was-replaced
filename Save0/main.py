@@ -8,6 +8,7 @@ import sunflower
 import substance
 import maze
 import cactus
+import dinosaur
 
 MODE = "auto"
 CARROT_BUFFER = 1000
@@ -29,6 +30,8 @@ def run_crop(name):
 		maze.cycle()
 	elif name == "cactus":
 		cactus.cycle()
+	elif name == "bones":
+		dinosaur.cycle()
 
 def auto_cycle():
 	crop = resources.get_next_crop()

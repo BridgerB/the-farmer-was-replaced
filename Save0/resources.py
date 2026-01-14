@@ -23,6 +23,7 @@ def get_weighted_resources():
 	gold = num_items(Items.Gold)
 	cactus = num_items(Items.Cactus)
 	substance = num_items(Items.Weird_Substance)
+	bones = num_items(Items.Bone)
 	res = [
 		["hay", hay],
 		["wood", wood],
@@ -31,7 +32,8 @@ def get_weighted_resources():
 		["power", power],
 		["gold", gold],
 		["cactus", cactus],
-		["substance", substance]
+		["substance", substance],
+		["bones", bones]
 	]
 	return res
 
