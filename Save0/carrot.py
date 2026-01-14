@@ -5,19 +5,24 @@ import logs
 def farm_cell(x, y):
 	if get_ground_type() != Grounds.Soil:
 		till()
-	if get_entity_type() == None:
+	entity = get_entity_type()
+	if entity == None:
 		plant(Entities.Carrot)
 		return
-	if can_harvest():
-		harvest()
-		plant(Entities.Carrot)
+	if entity == Entities.Carrot:
+		if can_harvest():
+			harvest()
+			plant(Entities.Carrot)
+		return
+	harvest()
+	plant(Entities.Carrot)
 
-def farm_zone(start_col, end_col):
-	nav.traverse_zone(start_col, end_col, farm_cell)
+def farm_zone(x_start, x_end, y_start, y_end):
+	nav.traverse_zone(x_start, x_end, y_start, y_end, farm_cell)
 
-def make_worker(start_col, end_col):
+def make_worker(x_start, x_end, y_start, y_end):
 	def worker():
-		farm_zone(start_col, end_col)
+		farm_zone(x_start, x_end, y_start, y_end)
 	return worker
 
 def cycle():

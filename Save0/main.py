@@ -8,7 +8,7 @@ import sunflower
 import substance
 import maze
 
-MODE = "sunflower"
+MODE = "auto"
 CARROT_BUFFER = 1000
 
 def run_crop(name):
@@ -38,8 +38,11 @@ def pumpkin_mode():
 	if num_items(Items.Wood) < 10:
 		return wood.cycle()
 	if num_items(Items.Carrot) < CARROT_BUFFER:
-		return carrot.cycle()
+		carrot.cycle()
+		return
 	pumpkin.cycle()
+	if num_items(Items.Carrot) < 100:
+		carrot.cycle()
 
 def sunflower_mode():
 	sunflower.cycle()

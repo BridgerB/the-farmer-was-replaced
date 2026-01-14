@@ -13,12 +13,12 @@ def farm_cell(x, y):
 		if num_items(Items.Fertilizer) > 0:
 			use_item(Items.Fertilizer)
 
-def farm_zone(start_col, end_col):
-	nav.traverse_zone(start_col, end_col, farm_cell)
+def farm_zone(x_start, x_end, y_start, y_end):
+	nav.traverse_zone(x_start, x_end, y_start, y_end, farm_cell)
 
-def make_worker(start_col, end_col):
+def make_worker(x_start, x_end, y_start, y_end):
 	def worker():
-		farm_zone(start_col, end_col)
+		farm_zone(x_start, x_end, y_start, y_end)
 	return worker
 
 def cycle():
