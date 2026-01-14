@@ -10,7 +10,7 @@ import maze
 import cactus
 import dinosaur
 
-MODE = "auto"
+MODE = "bones"
 CARROT_BUFFER = 1000
 
 def run_crop(name):
@@ -80,6 +80,8 @@ def main():
 			substance.cycle()
 		elif MODE == "gold":
 			maze.cycle()
+		elif MODE == "bones":
+			dinosaur.cycle()
 
 if __name__ == "__main__":
 	main()
