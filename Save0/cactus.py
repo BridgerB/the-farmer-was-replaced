@@ -5,8 +5,6 @@ import logs
 def plant_cell(x, y):
 	if get_ground_type() != Grounds.Soil:
 		till()
-	if get_water() < 0.8 and num_items(Items.Water) > 0:
-		use_item(Items.Water)
 	entity = get_entity_type()
 	if entity != Entities.Cactus:
 		if entity != None and can_harvest():
