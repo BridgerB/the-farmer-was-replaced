@@ -25,29 +25,42 @@ def get_directions_towards(tx, ty):
 	x = get_pos_x()
 	y = get_pos_y()
 	dirs = []
-	if tx > x:
-		dirs.append(East)
-	if tx < x:
-		dirs.append(West)
-	if ty > y:
-		dirs.append(North)
-	if ty < y:
-		dirs.append(South)
+	dx = tx - x
+	dy = ty - y
+	if abs(dx) >= abs(dy):
+		if dx > 0:
+			dirs.append(East)
+		elif dx < 0:
+			dirs.append(West)
+		if dy > 0:
+			dirs.append(North)
+		elif dy < 0:
+			dirs.append(South)
+	else:
+		if dy > 0:
+			dirs.append(North)
+		elif dy < 0:
+			dirs.append(South)
+		if dx > 0:
+			dirs.append(East)
+		elif dx < 0:
+			dirs.append(West)
 	for d in [North, East, South, West]:
 		if d not in dirs:
 			dirs.append(d)
 	return dirs
 
-def solve_from_pos(priority_dirs):
+def solve_with_target(tx, ty):
 	visited = {}
 	path = []
 	while get_entity_type() == Entities.Hedge or get_entity_type() == Entities.Treasure:
 		if get_entity_type() == Entities.Treasure:
 			harvest()
-			return
+			return True
 		pos = (get_pos_x(), get_pos_y())
 		if pos not in visited:
 			visited[pos] = True
+		priority_dirs = get_directions_towards(tx, ty)
 		moved = False
 		for direction in priority_dirs:
 			if can_move(direction):
@@ -62,31 +75,32 @@ def solve_from_pos(priority_dirs):
 			move(opposite(last))
 		elif not moved:
 			break
+	return False
 
-def make_solver(priority_dirs):
+def make_solver_with_target(tx, ty):
 	def solver():
-		solve_from_pos(priority_dirs)
+		solve_with_target(tx, ty)
 	return solver
 
-def make_waiting_solver(priority_dirs):
+def make_waiting_solver(tx, ty):
 	def solver():
 		while get_entity_type() != Entities.Hedge and get_entity_type() != Entities.Treasure:
 			pass
-		solve_from_pos(priority_dirs)
+		solve_with_target(tx, ty)
 	return solver
 
 def solve_maze_from_here():
 	tx, ty = measure()
-	strategies = [
-		[North, East, South, West],
-		[East, South, West, North],
-		[South, West, North, East],
+	size = get_world_size()
+	corners = [
+		(size - 1, 0),
+		(0, size - 1),
+		(size - 1, size - 1),
 	]
-	for strat in strategies:
+	for corner in corners:
 		if num_drones() < max_drones():
-			spawn_drone(make_solver(strat))
-	dirs = get_directions_towards(tx, ty)
-	solve_from_pos(dirs)
+			spawn_drone(make_solver_with_target(tx, ty))
+	solve_with_target(tx, ty)
 
 def cycle():
 	logs.log("maze cycle")
@@ -97,20 +111,20 @@ def cycle():
 	substance_needed = size * (2 ** max(0, num_unlocked(Unlocks.Mazes) - 1))
 	if num_items(Items.Weird_Substance) < substance_needed:
 		return
-	corners = [
-		[size - 1, 0, [North, West, South, East]],
-		[0, size - 1, [South, East, North, West]],
-		[size - 1, size - 1, [South, West, North, East]],
-	]
-	for corner in corners:
-		if num_drones() < max_drones():
-			nav.go_to(corner[0], corner[1])
-			spawn_drone(make_waiting_solver(corner[2]))
 	nav.go_to(0, 0)
 	if get_ground_type() == Grounds.Soil:
 		till()
 	plant(Entities.Bush)
 	use_item(Items.Weird_Substance, substance_needed)
 	tx, ty = measure()
-	dirs = get_directions_towards(tx, ty)
-	solve_from_pos(dirs)
+	corners = [
+		(size - 1, 0),
+		(0, size - 1),
+		(size - 1, size - 1),
+	]
+	for corner in corners:
+		if num_drones() < max_drones():
+			nav.go_to(corner[0], corner[1])
+			spawn_drone(make_waiting_solver(tx, ty))
+	nav.go_to(0, 0)
+	solve_with_target(tx, ty)

@@ -2,16 +2,23 @@ import nav
 import drone
 import logs
 
+first_planted = None
+
 def plant_zone(x_start, x_end, y_start, y_end):
+	global first_planted
 	for pos in nav.s_shape_range(x_start, x_end, y_start, y_end):
 		nav.go_to(pos[0], pos[1])
 		if get_ground_type() != Grounds.Soil:
 			till()
+		if get_water() < 0.8 and num_items(Items.Water) > 0:
+			use_item(Items.Water)
 		entity = get_entity_type()
 		if entity != None and entity != Entities.Sunflower:
 			harvest()
 		if get_entity_type() == None and num_items(Items.Carrot) > 0:
 			plant(Entities.Sunflower)
+			if first_planted == None:
+				first_planted = (pos[0], pos[1])
 
 def make_plant_worker(x_start, x_end, y_start, y_end):
 	def worker():
@@ -30,24 +37,19 @@ def make_petal_worker(x_start, x_end, y_start, y_end, target):
 		harvest_zone_petal(x_start, x_end, y_start, y_end, target)
 	return worker
 
-def wait_for_ready():
-	size = get_world_size()
-	for x in range(size):
-		for y in range(size):
-			nav.go_to(x, y)
-			if get_entity_type() == Entities.Sunflower:
-				while not can_harvest():
-					pass
-				return
-
 def cycle():
+	global first_planted
 	logs.log("sunflower cycle")
+	first_planted = None
 	drone.wait_for_workers()
 	drone.spawn_zone_workers(make_plant_worker)
 	zone = drone.get_main_zone()
 	plant_zone(zone[0], zone[1], zone[2], zone[3])
 	drone.wait_for_workers()
-	wait_for_ready()
+	if first_planted != None:
+		nav.go_to(first_planted[0], first_planted[1])
+		while get_entity_type() == Entities.Sunflower and not can_harvest():
+			pass
 	zones = drone.get_zone_bounds()
 	for target in range(15, 6, -1):
 		for i in range(1, len(zones)):

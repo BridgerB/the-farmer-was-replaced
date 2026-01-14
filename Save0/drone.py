@@ -1,12 +1,22 @@
 def get_zone_bounds():
 	size = get_world_size()
-	half = size // 2
-	return [
-		[0, half, 0, half],
-		[half, size, 0, half],
-		[0, half, half, size],
-		[half, size, half, size]
-	]
+	num_zones = max_drones()
+	if num_zones < 1:
+		num_zones = 1
+	if num_zones > size:
+		num_zones = size
+	base = size // num_zones
+	remainder = size % num_zones
+	zones = []
+	x_start = 0
+	for i in range(num_zones):
+		width = base
+		if i < remainder:
+			width = width + 1
+		x_end = x_start + width
+		zones.append([x_start, x_end, 0, size])
+		x_start = x_end
+	return zones
 
 def wait_for_workers():
 	while num_drones() > 1:

@@ -7,6 +7,7 @@ import pumpkin
 import sunflower
 import substance
 import maze
+import cactus
 
 MODE = "auto"
 CARROT_BUFFER = 1000
@@ -26,6 +27,8 @@ def run_crop(name):
 		substance.cycle()
 	elif name == "gold":
 		maze.cycle()
+	elif name == "cactus":
+		cactus.cycle()
 
 def auto_cycle():
 	crop = resources.get_next_crop()

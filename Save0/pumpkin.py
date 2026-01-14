@@ -3,9 +3,9 @@ import drone
 import logs
 import resources
 
-def process_zone(x_start, x_end, y_start, y_end):
-	pending = {}
-	for pos in nav.s_shape_range(x_start, x_end, y_start, y_end):
+def plant_all():
+	size = get_world_size()
+	for pos in nav.s_shape_range(0, size, 0, size):
 		nav.go_to(pos[0], pos[1])
 		if get_ground_type() != Grounds.Soil:
 			till()
@@ -17,44 +17,37 @@ def process_zone(x_start, x_end, y_start, y_end):
 				harvest()
 			if num_items(Items.Carrot) > 0:
 				plant(Entities.Pumpkin)
-				pending[(pos[0], pos[1])] = True
 
-	while len(pending) > 0:
-		first_pos = None
-		for p in pending:
-			first_pos = p
-			break
-		nav.go_to(first_pos[0], first_pos[1])
-		if get_entity_type() == Entities.Pumpkin:
-			while not can_harvest():
-				pass
-
-		next_pending = {}
-		for pos in pending:
+def wait_and_replant():
+	size = get_world_size()
+	all_ready = False
+	while not all_ready:
+		all_ready = True
+		for pos in nav.s_shape_range(0, size, 0, size):
 			nav.go_to(pos[0], pos[1])
 			entity = get_entity_type()
-			if entity == None or entity == Entities.Dead_Pumpkin:
+			if entity == Entities.Pumpkin:
+				if not can_harvest():
+					all_ready = False
+					while not can_harvest():
+						if get_entity_type() != Entities.Pumpkin:
+							break
+			elif entity == Entities.Dead_Pumpkin or entity == None:
+				all_ready = False
 				if num_items(Items.Carrot) == 0:
-					return
+					return False
 				if get_water() < 0.8 and num_items(Items.Water) > 0:
 					use_item(Items.Water)
 				plant(Entities.Pumpkin)
-				next_pending[pos] = True
-		pending = next_pending
-
-def make_worker(x_start, x_end, y_start, y_end):
-	def worker():
-		process_zone(x_start, x_end, y_start, y_end)
-	return worker
+	return True
 
 def cycle():
 	logs.log("pumpkin cycle")
 	if not resources.has_carrot():
 		return
 	drone.wait_for_workers()
-	drone.spawn_zone_workers(make_worker)
-	zone = drone.get_main_zone()
-	process_zone(zone[0], zone[1], zone[2], zone[3])
-	drone.wait_for_workers()
-	harvest()
-	nav.go_to(0, 0)
+	plant_all()
+	success = wait_and_replant()
+	if success:
+		nav.go_to(0, 0)
+		harvest()
