@@ -181,17 +181,8 @@ def chase_apples():
 					if not found_move:
 						chase_path = find_path_bfs(my_x, my_y, tail_end_x, tail_end_y, tail, grid_size)
 						if chase_path != None and len(chase_path) > 0:
-							step_dir = chase_path[0]
-							step_x, step_y = get_next_position(my_x, my_y, step_dir)
-							sim_tail = [(my_x, my_y)]
-							for seg in tail:
-								sim_tail.append(seg)
-							while len(sim_tail) > num_apples:
-								sim_tail.pop()
-							step_reach = count_reachable(step_x, step_y, sim_tail, grid_size)
-							if step_reach > 1:
-								next_dir = step_dir
-								found_move = True
+							next_dir = chase_path[0]
+							found_move = True
 
 				if not found_move:
 					best_dir = None
