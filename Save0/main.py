@@ -9,8 +9,9 @@ import substance
 import maze
 import cactus
 import dinosaur
+import hamiltonian
 
-MODE = "bones"
+MODE = "hamiltonian"
 CARROT_BUFFER = 1000
 
 def run_crop(name):
@@ -32,6 +33,8 @@ def run_crop(name):
 		cactus.cycle()
 	elif name == "bones":
 		dinosaur.cycle()
+	elif name == "hamiltonian":
+		hamiltonian.cycle()
 
 def auto_cycle():
 	crop = resources.get_next_crop()
@@ -82,6 +85,9 @@ def main():
 			maze.cycle()
 		elif MODE == "bones":
 			dinosaur.cycle()
+		elif MODE == "hamiltonian":
+			hamiltonian.cycle()
+			break
 
 if __name__ == "__main__":
 	main()
