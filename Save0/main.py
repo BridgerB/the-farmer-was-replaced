@@ -11,7 +11,7 @@ import cactus
 import dinosaur
 import hamiltonian
 
-MODE = "hamiltonian"
+MODE = "bones"
 CARROT_BUFFER = 1000
 
 def run_crop(name):
