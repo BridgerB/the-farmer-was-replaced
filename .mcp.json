@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "farmer": {
+      "command": "node",
+      "args": ["C:/Users/bridg/git/the-farmer-was-replaced-mcp/src/index.ts"]
+    }
+  }
+}
