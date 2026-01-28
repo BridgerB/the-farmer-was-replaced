@@ -151,3 +151,40 @@ seconds_to_10m = 90.69
 # - Multi-harvest points: 119.71s (movement overhead)
 # - No replanting: 198.81s (clusters too small)
 # - Minimal (plant + wait only): 176.8s
+
+[cactus]
+seconds_to_10m = 158.38
+
+# Optimized approach (PARALLEL BUBBLE SORT):
+# - Plant all cacti with parallel drones
+# - Wait for all to grow (~1 second)
+# - Sort rows in parallel (each drone bubble-sorts its row)
+# - Sort columns in parallel (each drone bubble-sorts its column)
+# - Harvest from (0,0) - triggers full chain
+# - Single harvest yields 33.5M cactus (>10M target)
+
+# Cactus mechanics:
+# - Growth time: ~1 second
+# - Cost: 64 pumpkins per cactus (!!)
+# - Each cactus has size 0-9 (random)
+# - measure() returns size
+# - Harvesting triggers chain: adjacent cacti in sorted order also harvest
+# - Yield = (chain length)² * 32
+# - Full 32x32 grid sorted = 1024² * 32 = 33,554,432 per harvest
+
+# Key discovery:
+# - Must sort BOTH rows AND columns for full grid chain
+# - Row-only sorting gives chains of ~32 (one row) = 32,768 per row
+# - Full sorting gives chain of 1024 = 33.5M total
+
+# Tested approaches:
+# - Full bubble sort (rows + cols): 158.38s (BEST)
+# - Single-pass sort (n iterations): 349.51s (repositioning overhead)
+# - Row-only sorting: very slow (small yields, many cycles)
+# - 8x8 grid: 846s (small clusters, many cycles needed)
+
+# Sorting bottleneck:
+# - Bubble sort is O(n²) per row/column
+# - 32 parallel drones = each sorts one row/column
+# - Worst case: ~500 passes per row/column
+# - Most time spent in sorting phase (~150s of 158s total)
