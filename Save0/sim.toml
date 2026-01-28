@@ -153,15 +153,16 @@ seconds_to_10m = 90.69
 # - Minimal (plant + wait only): 176.8s
 
 [cactus]
-seconds_to_10m = 158.38
+seconds_to_10m = 93.13
 
-# Optimized approach (PARALLEL BUBBLE SORT):
+# Optimized approach (24x24 GRID):
+# - Use 24x24 grid instead of 32x32 (fewer cells = faster sorting)
 # - Plant all cacti with parallel drones
 # - Wait for all to grow (~1 second)
 # - Sort rows in parallel (each drone bubble-sorts its row)
 # - Sort columns in parallel (each drone bubble-sorts its column)
 # - Harvest from (0,0) - triggers full chain
-# - Single harvest yields 33.5M cactus (>10M target)
+# - Single harvest yields 10.6M cactus (>10M target)
 
 # Cactus mechanics:
 # - Growth time: ~1 second
@@ -170,21 +171,27 @@ seconds_to_10m = 158.38
 # - measure() returns size
 # - Harvesting triggers chain: adjacent cacti in sorted order also harvest
 # - Yield = (chain length)² * 32
-# - Full 32x32 grid sorted = 1024² * 32 = 33,554,432 per harvest
+# - 24x24 grid sorted = 576² * 32 = 10,616,832 per harvest
 
 # Key discovery:
-# - Must sort BOTH rows AND columns for full grid chain
-# - Row-only sorting gives chains of ~32 (one row) = 32,768 per row
-# - Full sorting gives chain of 1024 = 33.5M total
+# - Smaller grid = faster sorting but lower yield
+# - 24x24 is optimal: just enough yield (10.6M) for single harvest
+# - 23x23 yields only 8.95M (needs 2 cycles = slower)
+# - 32x32 yields 33.5M but sorting takes too long
+
+# Phase breakdown (93.13s total):
+# - Plant: 3.76s
+# - Wait: 3.01s
+# - Row sort: 43.18s
+# - Col sort: 41.16s
+# - Harvest: ~2s
 
 # Tested approaches:
-# - Full bubble sort (rows + cols): 158.38s (BEST)
-# - Single-pass sort (n iterations): 349.51s (repositioning overhead)
-# - Row-only sorting: very slow (small yields, many cycles)
-# - 8x8 grid: 846s (small clusters, many cycles needed)
-
-# Sorting bottleneck:
-# - Bubble sort is O(n²) per row/column
-# - 32 parallel drones = each sorts one row/column
-# - Worst case: ~500 passes per row/column
-# - Most time spent in sorting phase (~150s of 158s total)
+# - 32x32 full sort: 158.38s
+# - 32x32 with 15 passes: 94.29s (11.3M yield)
+# - 32x32 with 16 passes: 98.26s (13M yield)
+# - 25x25 full sort: 97.9s
+# - 24x24 full sort: 93.13s (BEST)
+# - 23x23 full sort: 83.2s but only 8.95M (needs 2 cycles)
+# - 16x16 full sort: 205.36s (5 cycles needed)
+# - 8x8 full sort: 846s (77 cycles needed)

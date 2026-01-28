@@ -1,11 +1,10 @@
 TARGET = 10000000
 
 clear()
+set_world_size(24)
 
 start = get_time()
 size = get_world_size()
-
-quick_print("=== CACTUS OPTIMIZED ===")
 
 def till_and_plant():
 	for row in range(size):
