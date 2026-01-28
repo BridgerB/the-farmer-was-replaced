@@ -2,13 +2,14 @@
 seconds_to_10m = 41.48
 
 [wood]
-seconds_to_10m = 8.08
+seconds_to_10m = 7.94
 
-# Baseline approach:
-# - clear() field first
+# Optimized approach:
+# - Two-phase: plant first, then harvest
+# - Phase 1: All drones plant checkerboard pattern
+# - Wait for planters to finish
+# - Phase 2: Spawn harvesters while moving West
 # - Checkerboard pattern (Tree on even x+y, Bush on odd)
-# - 32 drones, one per column
-# - Check entity type before harvesting (skip grass)
 
 # Yield per harvest:
 # - Tree: 409,600 wood (!)
@@ -16,7 +17,10 @@ seconds_to_10m = 8.08
 # - Only ~25 tree harvests needed for 10M
 
 # Tested approaches:
-# - All trees (no checkerboard): 26.64s - WORSE because adjacent trees slow each other
+# - All trees (no checkerboard): 26.64s - WORSE (adjacent trees slow each other)
+# - Single-phase plant+harvest: 8.08s
+# - Two-phase, spawn harvesters moving East: 8.03s
+# - Two-phase, spawn harvesters moving West: 7.94s (BEST)
 
 # Optimizations applied:
 # - Power (2x movement speed, move = 100 ticks vs 200)
