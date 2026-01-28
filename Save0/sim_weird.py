@@ -20,78 +20,67 @@ def farm_cell():
 		if can_harvest():
 			harvest()
 
-def farm_column(col):
+def farm_column_up():
 	size = get_world_size()
-	while get_pos_x() < col:
-		move(East)
-	while get_pos_x() > col:
-		move(West)
-	while get_pos_y() > 0:
-		move(South)
-	
 	for row in range(size):
 		farm_cell()
 		if row < size - 1:
 			move(North)
 
-def make_worker(col):
-	def worker():
-		farm_column(col)
-	return worker
-
-def farm_pass_parallel():
+def farm_column_down():
 	size = get_world_size()
-	
-	while get_pos_x() > 0:
-		move(West)
-	while get_pos_y() > 0:
-		move(South)
-	
-	for col in range(1, size):
-		spawn_drone(make_worker(col))
-	
-	farm_column(0)
-	
-	while num_drones() > 1:
-		pass
+	for row in range(size):
+		farm_cell()
+		if row > 0:
+			move(South)
+
+def make_worker(col, going_up):
+	def worker():
+		size = get_world_size()
+		while get_pos_x() < col:
+			move(East)
+		if going_up:
+			while get_pos_y() > 0:
+				move(South)
+			farm_column_up()
+		else:
+			while get_pos_y() < size - 1:
+				move(North)
+			farm_column_down()
+	return worker
 
 clear()
 start = get_time()
 size = get_world_size()
 
-quick_print("=== WEIRD SUBSTANCE SIM (parallel) ===")
-quick_print("Grid: " + str(size) + "x" + str(size))
-quick_print("Drones: " + str(max_drones()))
-quick_print("Starting fertilizer: " + str(num_items(Items.Fertilizer)))
+quick_print("=== WEIRD SIM (alternating - BEST) ===")
+
+while get_pos_x() > 0:
+	move(West)
+while get_pos_y() > 0:
+	move(South)
 
 passes = 0
-start_substance = num_items(Items.Weird_Substance)
-start_fertilizer = num_items(Items.Fertilizer)
+going_up = True
 
 while num_items(Items.Weird_Substance) < TARGET:
 	passes = passes + 1
-	pass_start_sub = num_items(Items.Weird_Substance)
-	pass_start_fert = num_items(Items.Fertilizer)
 	
-	farm_pass_parallel()
+	for col in range(1, size):
+		spawn_drone(make_worker(col, going_up))
 	
-	substance = num_items(Items.Weird_Substance)
-	fertilizer = num_items(Items.Fertilizer)
-	elapsed = get_time() - start
+	if going_up:
+		farm_column_up()
+	else:
+		farm_column_down()
 	
-	sub_this_pass = substance - pass_start_sub
-	fert_this_pass = pass_start_fert - fertilizer
+	while num_drones() > 1:
+		pass
 	
-	if passes <= 10 or passes % 10 == 0:
-		quick_print("P" + str(passes) + ": +" + str(sub_this_pass) + " sub, total=" + str(substance) + " @" + str(elapsed) + "s")
+	going_up = not going_up
+	
+	if passes <= 5 or passes % 10 == 0:
+		quick_print("P" + str(passes) + ": " + str(num_items(Items.Weird_Substance)) + " @" + str(get_time() - start) + "s")
 
 elapsed = get_time() - start
-substance_gained = num_items(Items.Weird_Substance) - start_substance
-fertilizer_used = start_fertilizer - num_items(Items.Fertilizer)
-
-quick_print("")
-quick_print("=== RESULTS ===")
-quick_print("Substance: " + str(substance_gained))
-quick_print("Fertilizer used: " + str(fertilizer_used))
-quick_print("Time: " + str(elapsed) + "s")
-quick_print("Passes: " + str(passes))
+quick_print("Done: " + str(num_items(Items.Weird_Substance)) + " in " + str(elapsed) + "s (" + str(passes) + " passes)")

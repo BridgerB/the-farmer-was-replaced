@@ -253,13 +253,14 @@ seconds_to_10m = 723
 # - 32x32 Hamiltonian: 2234s (too many moves)
 
 [weird_substance]
-seconds_to_10m = 289
+seconds_to_10m = 249
 
-# Baseline approach (PARALLEL FERTILIZE):
+# Optimized approach (ALTERNATING DIRECTION):
 # - 32 drones, one per column
+# - Alternate up/down between passes (no return-to-origin)
 # - Each cell: plant grass → fertilize → harvest
 # - Harvesting fertilized grass yields weird substance (not hay)
-# - 39 passes needed, ~7.4s per pass
+# - 39 passes needed, ~6.4s per pass
 
 # Weird substance mechanics:
 # - Grass grows in ~0.5s on grassland
@@ -267,14 +268,16 @@ seconds_to_10m = 289
 # - Harvest fertilized grass → weird substance
 # - Harvest normal grass → hay
 # - Yield: 256 substance per fertilized grass (vs 512 hay)
+# - Infection boost: 479/cell but costs 1 substance (net worse due to overhead)
 
 # Key discovery:
 # - Must fertilize grass WHILE growing, then harvest immediately
 # - If grass is already ready, it yields hay not substance
 # - Grass grows fast, so need plant→fert→harvest in sequence per cell
+# - Alternating direction saves ~40s by eliminating return-to-origin
 
-# Phase breakdown (289s total):
-# - Per pass: ~7.4s (with 32 drones)
+# Phase breakdown (249s total):
+# - Per pass: ~6.4s (with 32 drones, alternating)
 # - Substance per pass: 262,144 (= 32x32 * 256)
 # - Fertilizer per pass: ~1,000
 # - 39 passes to reach 10M
@@ -285,5 +288,9 @@ seconds_to_10m = 289
 
 # Tested approaches:
 # - Single drone traversal: ~140s per pass (too slow)
-# - 32 drones parallel: ~7.4s per pass (BEST so far)
-# - Delayed fertilize (wait to return): yields 0 substance (grass already ready)
+# - 32 drones parallel (return to origin): 289s
+# - 32 drones alternating direction: 249s (BEST)
+# - 16x16 grid: 632s (smaller yield/pass)
+# - Spawn-while-moving: 340s (positioning overhead)
+# - Infection boost: 328s (200 tick overhead per cell)
+# - Auto-grass (no planting): fails (grass already ready = hay)
