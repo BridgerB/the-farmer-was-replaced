@@ -197,42 +197,57 @@ seconds_to_10m = 93.13
 # - 8x8 full sort: 846s (77 cycles needed)
 
 [bone]
-seconds_to_10m = 1230
+seconds_to_10m = 723
 
-# Optimized approach (HAMILTONIAN CYCLE):
-# - 16x16 grid with Hamiltonian cycle path (visits all 256 cells)
+# Optimized approach (24x24 HAMILTONIAN CYCLE):
+# - 24x24 grid with Hamiltonian cycle path (visits all 576 cells)
 # - Snake follows fixed cycle, NEVER traps itself
-# - Collect up to 254 apples per cycle (256 - 2 for head + next cell)
-# - Restart cycle when full, repeat until 10M bones
+# - Collect 560 apples in single cycle (minimum for 10M)
+# - Pre-computed direction array for each cycle position
+# - 560² × 32 = 10,035,200 bones in ONE cycle
 
 # Bone mechanics:
 # - Equip Dinosaur_Hat to start snake mini-game
 # - Apples spawn randomly, eating grows tail by 1
 # - Bones = (apples_eaten)² × 32 per cycle
-# - 254 apples = 254² × 32 = 2,064,128 bones per cycle
-# - 5 cycles needed for 10M
+# - Move speed: 400 ticks base, -3% per apple eaten (gets FASTER!)
+# - With Power: 200 ticks base (2x speed)
+# - After 200 apples: ~0.5 ticks per move!
 
-# Hamiltonian cycle construction:
-# - Column 0: all rows 0-15 (going North)
-# - Columns 1-15: rows 1-15 only (skip row 0), alternating up/down
-# - Row 0 return: (15,0) -> (14,0) -> ... -> (1,0)
+# Hamiltonian cycle construction (24x24):
+# - Column 0: all rows 0-23 (going North)
+# - Columns 1-23: rows 1-23 only (skip row 0), alternating up/down
+# - Row 0 return: (23,0) -> (22,0) -> ... -> (1,0)
 # - Cycle closes: (1,0) adjacent to (0,0)
 
-# Key discovery:
-# - With tail_length = cycle_length - 1, tail tip blocks next cell
-# - Max safe apples = 254 (leaving 2 cells: head + next)
-# - Greedy chase approach: only 20-50 apples before trapping
-# - Hamiltonian: guaranteed 254 apples (fills 99% of grid)
+# Key discoveries:
+# - 24x24 is minimum grid for 10M in single cycle (576 cells, need 562+)
+# - Single large cycle >> multiple small cycles (bone formula is quadratic)
+# - Pre-computing directions saves ~77s (800s -> 723s)
+# - Greedy chase traps at 20-50 apples; Hamiltonian gets 574
 
-# Phase breakdown (1230s total for 10M):
-# - Cycle 1: 254a, 12498m -> 0 bones (first cycle awards on restart)
-# - Cycle 2: 254a, 12271m -> 2.06M bones
-# - Cycle 3: 254a, 13029m -> 4.13M bones
-# - Cycle 4: 254a, 11801m -> 6.19M bones
-# - Cycle 5: 254a, 12691m -> 8.26M bones (partial, reaches 10M)
+# Minimum apples calculation:
+# - Need 10M bones = apples² × 32
+# - apples = sqrt(10M / 32) = 559.02 → need 560 apples
+# - Grid needs 560 + 2 cells = 562 minimum
+# - 23x23 = 529 (NOT ENOUGH), 24x24 = 576 (works!)
+
+# Phase breakdown (723s total):
+# - Setup: ~1s (go_home, change_hat)
+# - Chase: ~722s (560 apples, 60712 moves)
+# - Early moves: ~200 ticks each
+# - Late moves: ~few ticks each (speed bonus stacks!)
+
+# Grid size comparison:
+# - 16x16: 1230s (5 cycles of 254 apples each)
+# - 20x20: 1006s (2 cycles of 398 apples)
+# - 24x24: 723s (1 cycle of 560 apples) - BEST
+# - 32x32: 2234s (too many moves despite single cycle)
 
 # Tested approaches:
-# - Greedy chase (10x10): too slow, many cycles needed
-# - Greedy chase (16x16): 20-50 apples/cycle, still slow
-# - S-pattern (no cycle): doesn't close, gets blocked
-# - Hamiltonian cycle (16x16): 254 apples/cycle (BEST)
+# - Greedy chase (any size): 20-50 apples/cycle, traps itself
+# - 16x16 Hamiltonian: 1230s (5 cycles needed)
+# - 24x24 Hamiltonian: 800s (baseline)
+# - 24x24 + pre-computed dirs: 723s (BEST)
+# - 24x24 + shortcuts (jump to apple): blocked (unsafe)
+# - 32x32 Hamiltonian: 2234s (too many moves)
