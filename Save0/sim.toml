@@ -107,14 +107,16 @@ seconds_to_10m = 9.56
 # - To hit <5s total, need plant phase <2s - not achievable with current approach
 
 [pumpkin]
-seconds_to_10m = 109.0
+seconds_to_10m = 90.69
 
-# Optimized approach (MULTI-HARVEST):
-# - Plant all with parallel drones
-# - 2 quick wait/replant passes
-# - Harvest from center (mid, mid)
+# Optimized approach (ALTERNATING FAST-REPLANT):
+# - Plant pass going East
+# - Fast replant pass going West (no waiting, just scan/replant dead)
+# - Fast replant pass going East
+# - Wait+replant pass going West (wait for each pumpkin to be ready)
+# - Move to center, harvest
 # - Repeat until 10M
-# - 8 harvests, ~13.6s per cycle
+# - 6 harvests, ~15s per cycle, ~3.1M per harvest
 
 # Pumpkin mechanics:
 # - Growth time: ~2 seconds
@@ -130,12 +132,22 @@ seconds_to_10m = 109.0
 # - Replants grow at different times → separate clusters
 # - Best strategy: accept fragmentation, do multiple harvests
 
+# Key optimization:
+# - Alternating East/West spawning eliminates return-to-origin between passes
+# - Fast replant passes (no waiting) are quicker than wait+replant
+# - 2 fast replants + 1 wait gives optimal cluster connectivity
+
 # Tested approaches:
 # - Single mega harvest attempt: 167.22s (baseline, fragmented)
 # - Multi-harvest from corner (0,0): 116.74s
 # - Multi-harvest from center: 114.06s
-# - 2 wait passes + center: 109s (BEST)
-# - 1 wait pass: 117.3s (smaller clusters)
-# - 3 wait passes: 151.34s (too slow)
-# - Multi-corner harvest: 167.43s (movement overhead)
+# - 2 wait passes + center: 109s
+# - Alternating 2 fast-replant + 1 wait: 90.69s (BEST)
+# - Bidirectional spawning: 114.89s
+# - 4 passes (1 plant + 3 replant + 1 wait): 134.01s
+# - 16 drones (2 cols each): 176.7s (less parallelism)
+# - 16x16 grid: 167.69s (smaller clusters)
+# - Fertilizer: 93.15s (runs out of fertilizer)
+# - Multi-harvest points: 119.71s (movement overhead)
 # - No replanting: 198.81s (clusters too small)
+# - Minimal (plant + wait only): 176.8s

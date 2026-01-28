@@ -6,8 +6,6 @@ start = get_time()
 size = get_world_size()
 mid = size / 2
 
-quick_print("=== PUMPKIN OPTIMIZED ===")
-
 def plant_column():
 	for row in range(size):
 		if get_ground_type() != Grounds.Soil:
@@ -16,7 +14,14 @@ def plant_column():
 		plant(Entities.Pumpkin)
 		move(North)
 
-def quick_wait():
+def replant_only():
+	for row in range(size):
+		if get_entity_type() != Entities.Pumpkin:
+			use_item(Items.Water)
+			plant(Entities.Pumpkin)
+		move(North)
+
+def wait_and_replant():
 	for row in range(size):
 		e = get_entity_type()
 		if e == Entities.Pumpkin:
@@ -39,22 +44,25 @@ while num_items(Items.Pumpkin) < TARGET:
 	plant_column()
 	while num_drones() > 1:
 		pass
-	while get_pos_x() != 0:
-		move(West)
 	
 	for col in range(size - 1):
-		spawn_drone(quick_wait)
-		move(East)
-	quick_wait()
+		spawn_drone(replant_only)
+		move(West)
+	replant_only()
 	while num_drones() > 1:
 		pass
-	while get_pos_x() != 0:
-		move(West)
 	
 	for col in range(size - 1):
-		spawn_drone(quick_wait)
+		spawn_drone(replant_only)
 		move(East)
-	quick_wait()
+	replant_only()
+	while num_drones() > 1:
+		pass
+	
+	for col in range(size - 1):
+		spawn_drone(wait_and_replant)
+		move(West)
+	wait_and_replant()
 	while num_drones() > 1:
 		pass
 	
