@@ -4,6 +4,15 @@ seconds_to_10m = 41.48
 [wood]
 seconds_to_10m = 7.94
 
+[carrot]
+seconds_to_10m = 140.93
+
+# Baseline approach:
+# - Two-phase: till+plant first, then harvest+replant
+# - Requires wood/hay to plant (not carrots!)
+# - Yield: 512 carrots per harvest
+# - Growth time: ~6 seconds
+
 # Optimized approach:
 # - Two-phase: plant first, then harvest
 # - Phase 1: All drones plant checkerboard pattern
