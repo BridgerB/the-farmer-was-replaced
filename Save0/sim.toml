@@ -294,3 +294,44 @@ seconds_to_10m = 249
 # - Spawn-while-moving: 340s (positioning overhead)
 # - Infection boost: 328s (200 tick overhead per cell)
 # - Auto-grass (no planting): fails (grass already ready = hay)
+
+[gold]
+seconds_to_10m = 9855
+
+# Baseline approach (10x10 SINGLE DRONE):
+# - Use 10x10 grid (optimal efficiency)
+# - Create maze: plant bush + use Weird_Substance
+# - Solve with backtracking: track visited, move toward target, backtrack when stuck
+# - measure() returns treasure position from anywhere in maze
+
+# Gold mechanics:
+# - Gold yield = size * (upgrade multiplier)
+# - At Mazes level 6: multiplier = 1024 (so 10x10 = 3,200 gold)
+# - Substance cost = size * (2 ^ (num_unlocked(Mazes) - 1))
+# - Maze solve time scales ~exponentially with size
+
+# Key discovery:
+# - Smaller mazes are MUCH faster to solve
+# - Sweet spot is 9x9 or 10x10 (~1,000 gold/s)
+# - Larger mazes have diminishing returns (more backtracking)
+# - 11x11 drops significantly (cliff in efficiency)
+
+# Size comparison (30 mazes avg):
+# - 8x8: 2,048 gold, 2.39s, 857 gold/s
+# - 9x9: 2,592 gold, 2.14s, 1,213 gold/s
+# - 10x10: 3,200 gold, 2.64s, 1,214 gold/s (BEST in testing)
+# - 11x11: 3,872 gold, 4.64s, 835 gold/s
+# - 12x12: 4,608 gold, 4.33s, 1,063 gold/s
+# - 16x16: 8,192 gold, 10.91s, 751 gold/s
+# - 32x32: 32,768 gold, 35.26s, 929 gold/s
+
+# Actual full run (10x10):
+# - Mazes: 3,125
+# - Time per maze: ~3.15s average
+# - Total: 9,855s
+# - Efficiency: 1,015 gold/s
+
+# Potential optimizations to explore:
+# - Multi-drone solving (spawn at corners before maze created)
+# - Better pathfinding (A* instead of simple backtracking)
+# - Parallel maze creation + solving
