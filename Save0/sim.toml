@@ -59,26 +59,31 @@ seconds_to_10m = 7.94
 # - Spawn while moving (reduces worker East moves)
 
 [carrot]
-seconds_to_10m = 17.73
+seconds_to_10m = 9.56
 
 # Optimized approach (POLYCULTURE):
-# - Checkerboard pattern: carrots on (x+y)%2==0, trees on odd
-# - Trees act as companions giving 160x yield bonus
-# - 512 carrot cells * huge bonus = massive yield per cycle
-# - Water carrots during replant
+# - Checkerboard pattern: carrots on (x+y)%2==0, bushes on odd
+# - Bushes act as companions giving 160x yield bonus
+# - Continuous harvest loop (no repositioning between cycles)
+# - Water only during initial plant phase
 
 # Polyculture discovery:
 # - get_companion() returns (type, (x,y)) for bonus
 # - Base yield: 512 carrots/harvest
 # - With companion: 81,920 carrots/harvest (160x!)
-# - Checkerboard trees satisfy many companion requirements
+# - Checkerboard pattern satisfies many companion requirements
+
+# Tested companion types:
+# - Trees: 17.73s (grow slower)
+# - Bushes: 9.56s (BEST - faster growth)
+# - Grass: 17.73s (same as trees)
 
 # Previous best (no polyculture):
 # - Water if < 0.3: 72.04s
 # - No water: 140.93s
-# - Water always: 89.88s
 
 # Optimizations applied:
-# - Polyculture checkerboard (carrots + trees)
-# - 32 drones parallel planting/harvesting
-# - Water on replant
+# - Polyculture checkerboard (carrots + bushes)
+# - Continuous harvest loop (no repositioning)
+# - 32 drones parallel
+# - Water only on initial plant
