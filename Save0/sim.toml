@@ -1,8 +1,33 @@
 [hay]
-seconds_to_10m = 45.49
+seconds_to_10m = 41.48
+
 # Optimizations applied:
-# - Power (2x movement speed)
-# - Multi-drone parallelism (zone splitting)
-# - S-pattern traversal
-# - No sync between cycles (spawn once)
-# - Alternating forward/backward direction
+# - Power (2x movement speed, move = 100 ticks vs 200)
+# - 32 drones (one per column)
+# - Wrap-around (always North, no direction changes)
+# - No can_harvest() check (harvest anyway, saves 1 tick)
+# - Spawn while moving (reduces worker East moves)
+
+# Approaches tested that didn't help:
+# - Batch sizes (2,3,4,5,8): all ~41.4-41.6s
+# - Random seeds (0-9): all identical at 41.48s
+# - can_harvest() check: 41.68s (overhead)
+# - Plant grass explicitly: 61.6s (extra 200 ticks)
+# - Smaller grid (16x16): 81.39s (less grass to harvest)
+# - Zigzag patterns: 51.84s (extra movement)
+# - Double harvest per cell: 61.6s (wasted ticks on empty)
+# - Double move per harvest: 61.6s (skip cells)
+# - 2 drones per column (16 cols): 81.89s (less coverage)
+# - Staggered starting positions: 41.97s (positioning overhead)
+# - Fertilizer: 122.05s (use_item overhead)
+# - Water: 41.48s (no effect on grass)
+# - Single drone: >120s (no parallelism)
+# - Stationary harvesting: very slow (waiting for regrowth)
+
+# Fundamental limits:
+# - Grass regrows in 0.47s, yields 512 hay/harvest
+# - harvest() = 200 ticks, move() = 100 ticks (with Power)
+# - 32 drones max, tick rate ~6075 ticks/sec
+# - Column pass (32 cells) = 9600 ticks = 1.58s
+# - Each cell harvested 1x per 1.58s (vs 0.47s regrowth)
+# - Bottleneck: drone speed, not grass regrowth
