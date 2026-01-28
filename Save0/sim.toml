@@ -1,44 +1,10 @@
 [hay]
 seconds_to_10m = 41.48
 
-[wood]
-seconds_to_10m = 7.94
-
-[carrot]
-seconds_to_10m = 89.88
-
 # Optimized approach:
-# - Two-phase: till+plant+water first, then harvest+replant
-# - Requires wood/hay to plant (not carrots!)
-# - Yield: 512 carrots per harvest
-# - Water speeds up growth significantly
-# - Baseline without water: 140.93s
-# - With water on initial plant: 89.88s
-
-# Optimized approach:
-# - Two-phase: plant first, then harvest
-# - Phase 1: All drones plant checkerboard pattern
-# - Wait for planters to finish
-# - Phase 2: Spawn harvesters while moving West
-# - Checkerboard pattern (Tree on even x+y, Bush on odd)
-
-# Yield per harvest:
-# - Tree: 409,600 wood (!)
-# - Bush: 512 wood
-# - Only ~25 tree harvests needed for 10M
-
-# Tested approaches:
-# - All trees (no checkerboard): 26.64s - WORSE (adjacent trees slow each other)
-# - Single-phase plant+harvest: 8.08s
-# - Two-phase, spawn harvesters moving East: 8.03s
-# - Two-phase, spawn harvesters moving West: 7.94s (BEST)
-
-# Optimizations applied:
-# - Power (2x movement speed, move = 100 ticks vs 200)
-# - 32 drones (one per column)
-# - Wrap-around (always North, no direction changes)
-# - No can_harvest() check (harvest anyway, saves 1 tick)
-# - Spawn while moving (reduces worker East moves)
+# - 32 drones (one per column), always moving North (wrap-around)
+# - harvest() + move(North) loop, no can_harvest() check
+# - Grass regrows automatically, yields 512 hay/harvest
 
 # Approaches tested that didn't help:
 # - Batch sizes (2,3,4,5,8): all ~41.4-41.6s
@@ -63,3 +29,62 @@ seconds_to_10m = 89.88
 # - Column pass (32 cells) = 9600 ticks = 1.58s
 # - Each cell harvested 1x per 1.58s (vs 0.47s regrowth)
 # - Bottleneck: drone speed, not grass regrowth
+
+[wood]
+seconds_to_10m = 7.94
+
+# Optimized approach:
+# - Two-phase: plant first, then harvest
+# - Phase 1: All drones plant checkerboard pattern (Tree on even x+y, Bush on odd)
+# - Wait for planters to finish
+# - Phase 2: Spawn harvesters while moving West
+# - Checkerboard avoids adjacent tree slowdown
+
+# Yield per harvest:
+# - Tree: 409,600 wood (!)
+# - Bush: 512 wood
+# - Only ~25 tree harvests needed for 10M
+
+# Tested approaches:
+# - All trees (no checkerboard): 26.64s - WORSE (adjacent trees slow each other)
+# - Single-phase plant+harvest: 8.08s
+# - Two-phase, spawn harvesters moving East: 8.03s
+# - Two-phase, spawn harvesters moving West: 7.94s (BEST)
+
+# Optimizations applied:
+# - Power (2x movement speed, move = 100 ticks vs 200)
+# - 32 drones (one per column)
+# - Wrap-around (always North, no direction changes)
+# - No can_harvest() check (harvest anyway, saves 1 tick)
+# - Spawn while moving (reduces worker East moves)
+
+[carrot]
+seconds_to_10m = 72.04
+
+# Optimized approach:
+# - Two-phase: till+plant+water first, then harvest+replant
+# - Requires wood/hay to plant (not carrots!)
+# - Yield: 512 carrots per harvest
+# - Conditional watering: only when get_water() < 0.3
+
+# Tested water thresholds:
+# - No water: 140.93s
+# - Water always: 89.88s
+# - Water if < 0.8: 74.5s
+# - Water if < 0.5: 72.57s
+# - Water if < 0.3: 72.04s (BEST)
+# - Water if < 0.25: 74.15s
+# - Water if < 0.2: 79.4s
+
+# Other tested approaches:
+# - Fertilizer: 175.8s (overhead too high)
+# - Batch 4 operations: 71.95s (marginal, not consistent)
+# - Batch 8 operations: 72.21s (worse)
+# - Water every 4th cell: 205.69s (not enough water)
+
+# Optimizations applied:
+# - Power (2x movement speed)
+# - 32 drones (one per column)
+# - Wrap-around (always North)
+# - No can_harvest() check
+# - No till() check (just call till())

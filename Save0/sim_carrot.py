@@ -4,18 +4,17 @@ clear()
 
 def tiller_planter():
 	for i in range(32):
-		if get_ground_type() != Grounds.Soil:
-			till()
+		till()
 		use_item(Items.Water)
 		plant(Entities.Carrot)
 		move(North)
 
 def harvester():
 	while num_items(Items.Carrot) < TARGET:
-		if can_harvest():
-			harvest()
+		harvest()
+		if get_water() < 0.3:
 			use_item(Items.Water)
-			plant(Entities.Carrot)
+		plant(Entities.Carrot)
 		move(North)
 
 start = get_time()
@@ -27,8 +26,7 @@ for c in range(size - 2):
 	spawn_drone(tiller_planter)
 move(East)
 for i in range(32):
-	if get_ground_type() != Grounds.Soil:
-		till()
+	till()
 	use_item(Items.Water)
 	plant(Entities.Carrot)
 	move(North)
@@ -42,10 +40,10 @@ for c in range(size - 1):
 spawn_drone(harvester)
 
 while num_items(Items.Carrot) < TARGET:
-	if can_harvest():
-		harvest()
+	harvest()
+	if get_water() < 0.3:
 		use_item(Items.Water)
-		plant(Entities.Carrot)
+	plant(Entities.Carrot)
 	move(North)
 
 quick_print("Carrot: " + str(num_items(Items.Carrot)))
