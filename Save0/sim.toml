@@ -5,13 +5,15 @@ seconds_to_10m = 41.48
 seconds_to_10m = 7.94
 
 [carrot]
-seconds_to_10m = 140.93
+seconds_to_10m = 89.88
 
-# Baseline approach:
-# - Two-phase: till+plant first, then harvest+replant
+# Optimized approach:
+# - Two-phase: till+plant+water first, then harvest+replant
 # - Requires wood/hay to plant (not carrots!)
 # - Yield: 512 carrots per harvest
-# - Growth time: ~6 seconds
+# - Water speeds up growth significantly
+# - Baseline without water: 140.93s
+# - With water on initial plant: 89.88s
 
 # Optimized approach:
 # - Two-phase: plant first, then harvest
