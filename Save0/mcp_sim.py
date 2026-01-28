@@ -4,8 +4,6 @@ import drone
 def farm_cell(x, y):
 	if can_harvest():
 		harvest()
-	if get_entity_type() == None:
-		plant(Entities.Grass)
 
 def farm_zone(x_start, x_end, y_start, y_end):
 	nav.traverse_zone(x_start, x_end, y_start, y_end, farm_cell)
