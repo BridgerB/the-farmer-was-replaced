@@ -17,7 +17,7 @@ def traverse_column_down(height):
 		move(South)
 	farm_cell()
 
-def farm_zone_once(x_start, x_end, y_start, y_end):
+def farm_zone_forward(x_start, x_end, y_start, y_end):
 	height = y_end - y_start - 1
 	for col in range(x_start, x_end):
 		if (col - x_start) % 2 == 0:
@@ -27,11 +27,27 @@ def farm_zone_once(x_start, x_end, y_start, y_end):
 		if col < x_end - 1:
 			move(East)
 
+def farm_zone_backward(x_start, x_end, y_start, y_end):
+	height = y_end - y_start - 1
+	width = x_end - x_start
+	for i in range(width):
+		col = x_end - 1 - i
+		if (width - 1 - i) % 2 == 0:
+			traverse_column_down(height)
+		else:
+			traverse_column_up(height)
+		if i < width - 1:
+			move(West)
+
 def farm_zone_loop(x_start, x_end, y_start, y_end):
 	nav.go_to(x_start, y_start)
+	forward = True
 	while num_items(Items.Hay) < 10000000:
-		farm_zone_once(x_start, x_end, y_start, y_end)
-		nav.go_to(x_start, y_start)
+		if forward:
+			farm_zone_forward(x_start, x_end, y_start, y_end)
+		else:
+			farm_zone_backward(x_start, x_end, y_start, y_end)
+		forward = not forward
 
 def make_worker(x_start, x_end, y_start, y_end):
 	def worker():

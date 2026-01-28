@@ -1,2 +1,8 @@
 [hay]
-seconds_to_10m = 60.47
+seconds_to_10m = 45.49
+# Optimizations applied:
+# - Power (2x movement speed)
+# - Multi-drone parallelism (zone splitting)
+# - S-pattern traversal
+# - No sync between cycles (spawn once)
+# - Alternating forward/backward direction
