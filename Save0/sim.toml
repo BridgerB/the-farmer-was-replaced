@@ -59,32 +59,26 @@ seconds_to_10m = 7.94
 # - Spawn while moving (reduces worker East moves)
 
 [carrot]
-seconds_to_10m = 72.04
+seconds_to_10m = 17.73
 
-# Optimized approach:
-# - Two-phase: till+plant+water first, then harvest+replant
-# - Requires wood/hay to plant (not carrots!)
-# - Yield: 512 carrots per harvest
-# - Conditional watering: only when get_water() < 0.3
+# Optimized approach (POLYCULTURE):
+# - Checkerboard pattern: carrots on (x+y)%2==0, trees on odd
+# - Trees act as companions giving 160x yield bonus
+# - 512 carrot cells * huge bonus = massive yield per cycle
+# - Water carrots during replant
 
-# Tested water thresholds:
+# Polyculture discovery:
+# - get_companion() returns (type, (x,y)) for bonus
+# - Base yield: 512 carrots/harvest
+# - With companion: 81,920 carrots/harvest (160x!)
+# - Checkerboard trees satisfy many companion requirements
+
+# Previous best (no polyculture):
+# - Water if < 0.3: 72.04s
 # - No water: 140.93s
 # - Water always: 89.88s
-# - Water if < 0.8: 74.5s
-# - Water if < 0.5: 72.57s
-# - Water if < 0.3: 72.04s (BEST)
-# - Water if < 0.25: 74.15s
-# - Water if < 0.2: 79.4s
-
-# Other tested approaches:
-# - Fertilizer: 175.8s (overhead too high)
-# - Batch 4 operations: 71.95s (marginal, not consistent)
-# - Batch 8 operations: 72.21s (worse)
-# - Water every 4th cell: 205.69s (not enough water)
 
 # Optimizations applied:
-# - Power (2x movement speed)
-# - 32 drones (one per column)
-# - Wrap-around (always North)
-# - No can_harvest() check
-# - No till() check (just call till())
+# - Polyculture checkerboard (carrots + trees)
+# - 32 drones parallel planting/harvesting
+# - Water on replant
