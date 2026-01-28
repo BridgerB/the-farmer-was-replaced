@@ -33,22 +33,20 @@ while get_pos_y() != 0:
 while not can_harvest():
 	pass
 
-def harvest_loop():
+def harvest_all():
 	x = get_pos_x()
 	while num_items(Items.Carrot) < TARGET:
-		y = get_pos_y()
-		if (x + y) % 2 == 0:
-			harvest()
-			plant(Entities.Carrot)
+		harvest()
+		plant(Entities.Carrot)
 		move(North)
 
 for col in range(size - 1):
-	spawn_drone(harvest_loop)
+	spawn_drone(harvest_all)
 	move(East)
-harvest_loop()
+harvest_all()
 
 while num_drones() > 1:
 	pass
 
 quick_print("Carrots: " + str(num_items(Items.Carrot)))
-quick_print("Time: " + str(get_time() - start) + "s")
+quick_print("Total: " + str(get_time() - start) + "s")

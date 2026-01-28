@@ -63,27 +63,45 @@ seconds_to_10m = 9.56
 
 # Optimized approach (POLYCULTURE):
 # - Checkerboard pattern: carrots on (x+y)%2==0, bushes on odd
-# - Bushes act as companions giving 160x yield bonus
+# - Bushes act as companions giving partial polyculture bonus
 # - Continuous harvest loop (no repositioning between cycles)
-# - Water only during initial plant phase
+# - Water during initial plant phase
 
 # Polyculture discovery:
 # - get_companion() returns (type, (x,y)) for bonus
 # - Base yield: 512 carrots/harvest
 # - With companion: 81,920 carrots/harvest (160x!)
-# - Checkerboard pattern satisfies many companion requirements
+# - Each carrot wants SPECIFIC companion type at SPECIFIC position
+# - Checkerboard pattern satisfies SOME companion requirements
+
+# Phase breakdown (9.56s total):
+# - Plant phase: 5.23s (till + water + plant carrots, plant bushes)
+# - Wait for growth: 0s (carrots ready when plant phase ends)
+# - Harvest phase: 3.29s (continuous loop until 10M)
 
 # Tested companion types:
-# - Trees: 17.73s (grow slower)
-# - Bushes: 9.56s (BEST - faster growth)
-# - Grass: 17.73s (same as trees)
+# - Bushes: 9.56s (BEST)
+# - Trees: 17.73s (grow slower, runs out of resources)
+# - Grass only: runs out of resources (not enough bonus)
+# - Mixed (bush+tree+grass): runs out of resources
+
+# Approaches tested that didn't beat 9.56s:
+# - No water in plant phase: runs out of resources
+# - Water in harvest phase instead: 12.89s
+# - Alternating columns (not checkerboard): 13.66s
+# - Skip modulo check, harvest all cells: 10.96s (can't plant on grassland)
+# - Exact companion placement: 25s+ (movement overhead too high)
+# - Plant carrots first, then bushes: runs out of resources
+# - Combined plant+harvest function: runs out of resources
+# - Spawn while moving West: 6.25s plant phase (worse)
 
 # Previous best (no polyculture):
 # - Water if < 0.3: 72.04s
 # - No water: 140.93s
 
-# Optimizations applied:
-# - Polyculture checkerboard (carrots + bushes)
-# - Continuous harvest loop (no repositioning)
-# - 32 drones parallel
-# - Water only on initial plant
+# Fundamental limits:
+# - Plant phase bottleneck: 700 ticks per carrot cell (till+water+plant+move)
+# - 512 carrot cells / 32 drones = 16 cells per drone
+# - Theoretical minimum: 16 * 700 / 6075 = 1.84s per drone
+# - Actual: 5.23s (spawn overhead, movement between columns)
+# - To hit <5s total, need plant phase <2s - not achievable with current approach
