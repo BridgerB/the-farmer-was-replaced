@@ -1,6 +1,23 @@
 [hay]
 seconds_to_10m = 41.48
 
+[wood]
+seconds_to_10m = 8.08
+
+# Baseline approach:
+# - clear() field first
+# - Checkerboard pattern (Tree on even x+y, Bush on odd)
+# - 32 drones, one per column
+# - Check entity type before harvesting (skip grass)
+
+# Yield per harvest:
+# - Tree: 409,600 wood (!)
+# - Bush: 512 wood
+# - Only ~25 tree harvests needed for 10M
+
+# Tested approaches:
+# - All trees (no checkerboard): 26.64s - WORSE because adjacent trees slow each other
+
 # Optimizations applied:
 # - Power (2x movement speed, move = 100 ticks vs 200)
 # - 32 drones (one per column)
