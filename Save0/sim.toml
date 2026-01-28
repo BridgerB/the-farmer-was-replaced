@@ -107,13 +107,14 @@ seconds_to_10m = 9.56
 # - To hit <5s total, need plant phase <2s - not achievable with current approach
 
 [pumpkin]
-seconds_to_10m = 167.22
+seconds_to_10m = 109.0
 
-# BASELINE - needs optimization
-# - Grid: 32x32 = 1024 cells
-# - Plant phase: 6.29s (parallel drones)
-# - Wait/replant: 159.83s (4 rounds)
-# - Yield: 3,145,728 (only ~146³ connected, NOT full mega pumpkin)
+# Optimized approach (MULTI-HARVEST):
+# - Plant all with parallel drones
+# - 2 quick wait/replant passes
+# - Harvest from center (mid, mid)
+# - Repeat until 10M
+# - 8 harvests, ~13.6s per cycle
 
 # Pumpkin mechanics:
 # - Growth time: ~2 seconds
@@ -121,10 +122,20 @@ seconds_to_10m = 167.22
 # - ~20% death rate → Dead_Pumpkin, needs replanting
 # - Adjacent grown pumpkins merge into "mega pumpkin"
 # - Yield = (connected pumpkins)³
-# - If all 1024 connected: 1,073,741,824 pumpkins (1 billion!)
-# - Must wait for ALL ready before harvesting ANY
+# - Replanted pumpkins form SEPARATE clusters (don't merge with original)
 
-# Current issue:
-# - Mega pumpkin is fragmented (only ~146 connected)
-# - Dead pumpkins break connectivity
-# - Wait/replant phase too slow, more die while checking
+# Key discovery:
+# - Full mega pumpkin (1024³ = 1B) is NOT achievable
+# - Dead pumpkins break connectivity permanently
+# - Replants grow at different times → separate clusters
+# - Best strategy: accept fragmentation, do multiple harvests
+
+# Tested approaches:
+# - Single mega harvest attempt: 167.22s (baseline, fragmented)
+# - Multi-harvest from corner (0,0): 116.74s
+# - Multi-harvest from center: 114.06s
+# - 2 wait passes + center: 109s (BEST)
+# - 1 wait pass: 117.3s (smaller clusters)
+# - 3 wait passes: 151.34s (too slow)
+# - Multi-corner harvest: 167.43s (movement overhead)
+# - No replanting: 198.81s (clusters too small)

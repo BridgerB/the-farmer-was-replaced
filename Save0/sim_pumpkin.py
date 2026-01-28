@@ -4,80 +4,66 @@ clear()
 
 start = get_time()
 size = get_world_size()
+mid = size / 2
 
-quick_print("=== PUMPKIN BASELINE ===")
-quick_print("Grid: " + str(size) + "x" + str(size) + " = " + str(size*size) + " cells")
-quick_print("Max yield if all connected: " + str((size*size)*(size*size)*(size*size)))
+quick_print("=== PUMPKIN OPTIMIZED ===")
 
 def plant_column():
 	for row in range(size):
 		if get_ground_type() != Grounds.Soil:
 			till()
-		if get_water() < 0.8:
-			use_item(Items.Water)
+		use_item(Items.Water)
 		plant(Entities.Pumpkin)
 		move(North)
 
-quick_print("Phase 1: Planting...")
-plant_start = get_time()
-for col in range(size - 1):
-	spawn_drone(plant_column)
-	move(East)
-plant_column()
-while num_drones() > 1:
-	pass
-quick_print("Plant done: " + str(get_time() - plant_start) + "s")
-
-while get_pos_x() != 0:
-	move(West)
-
-def wait_column():
+def quick_wait():
 	for row in range(size):
-		entity = get_entity_type()
-		if entity == Entities.Pumpkin:
+		e = get_entity_type()
+		if e == Entities.Pumpkin:
 			while not can_harvest():
 				if get_entity_type() != Entities.Pumpkin:
 					break
 		if get_entity_type() != Entities.Pumpkin:
-			if get_water() < 0.8:
-				use_item(Items.Water)
+			use_item(Items.Water)
 			plant(Entities.Pumpkin)
 		move(North)
 
-quick_print("Phase 2: Wait and replant...")
-wait_start = get_time()
-rounds = 0
-all_ready = False
+harvests = 0
 
-while not all_ready:
-	rounds = rounds + 1
+while num_items(Items.Pumpkin) < TARGET:
+	harvests = harvests + 1
+	
 	for col in range(size - 1):
-		spawn_drone(wait_column)
+		spawn_drone(plant_column)
 		move(East)
-	wait_column()
+	plant_column()
 	while num_drones() > 1:
 		pass
 	while get_pos_x() != 0:
 		move(West)
 	
-	all_ready = True
-	for x in range(size):
-		for y in range(size):
-			e = get_entity_type()
-			if e != Entities.Pumpkin or not can_harvest():
-				all_ready = False
-			move(North)
+	for col in range(size - 1):
+		spawn_drone(quick_wait)
 		move(East)
+	quick_wait()
+	while num_drones() > 1:
+		pass
 	while get_pos_x() != 0:
 		move(West)
 	
-	quick_print("Round " + str(rounds) + " complete")
+	for col in range(size - 1):
+		spawn_drone(quick_wait)
+		move(East)
+	quick_wait()
+	while num_drones() > 1:
+		pass
+	
+	while get_pos_x() < mid:
+		move(East)
+	while get_pos_y() < mid:
+		move(North)
+	
+	harvest()
+	quick_print("H" + str(harvests) + ": " + str(num_items(Items.Pumpkin)))
 
-quick_print("Wait done: " + str(get_time() - wait_start) + "s")
-
-quick_print("Phase 3: Harvest...")
-harvest()
-
-quick_print("=== RESULTS ===")
-quick_print("Pumpkins: " + str(num_items(Items.Pumpkin)))
-quick_print("Total time: " + str(get_time() - start) + "s")
+quick_print("Done: " + str(get_time() - start) + "s")
