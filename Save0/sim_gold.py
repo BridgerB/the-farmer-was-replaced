@@ -1,6 +1,8 @@
 def solve(tx, ty):
 	visited = {}
 	path = []
+	x = get_pos_x()
+	y = get_pos_y()
 	while True:
 		ent = get_entity_type()
 		if ent == Entities.Treasure:
@@ -8,60 +10,87 @@ def solve(tx, ty):
 			return True
 		if ent != Entities.Hedge:
 			return False
-		pos = (get_pos_x(), get_pos_y())
-		visited[pos] = True
+		visited[(x, y)] = True
+		dx = tx - x
+		dy = ty - y
 		moved = False
-		dx = tx - get_pos_x()
-		dy = ty - get_pos_y()
-		dirs = []
 		if abs(dx) >= abs(dy):
-			if dx > 0:
-				dirs.append(East)
-			elif dx < 0:
-				dirs.append(West)
-			if dy > 0:
-				dirs.append(North)
-			elif dy < 0:
-				dirs.append(South)
+			if dx > 0 and can_move(East) and (x+1, y) not in visited:
+				move(East)
+				path.append(East)
+				x = x + 1
+				moved = True
+			elif dx < 0 and can_move(West) and (x-1, y) not in visited:
+				move(West)
+				path.append(West)
+				x = x - 1
+				moved = True
+			elif dy > 0 and can_move(North) and (x, y+1) not in visited:
+				move(North)
+				path.append(North)
+				y = y + 1
+				moved = True
+			elif dy < 0 and can_move(South) and (x, y-1) not in visited:
+				move(South)
+				path.append(South)
+				y = y - 1
+				moved = True
 		else:
-			if dy > 0:
-				dirs.append(North)
-			elif dy < 0:
-				dirs.append(South)
-			if dx > 0:
-				dirs.append(East)
-			elif dx < 0:
-				dirs.append(West)
-		for d in [North, East, South, West]:
-			if d not in dirs:
-				dirs.append(d)
-		for d in dirs:
-			if can_move(d):
-				x = get_pos_x()
-				y = get_pos_y()
-				if d == North:
-					np = (x, y + 1)
-				elif d == South:
-					np = (x, y - 1)
-				elif d == East:
-					np = (x + 1, y)
-				else:
-					np = (x - 1, y)
-				if np not in visited:
-					move(d)
-					path.append(d)
-					moved = True
-					break
+			if dy > 0 and can_move(North) and (x, y+1) not in visited:
+				move(North)
+				path.append(North)
+				y = y + 1
+				moved = True
+			elif dy < 0 and can_move(South) and (x, y-1) not in visited:
+				move(South)
+				path.append(South)
+				y = y - 1
+				moved = True
+			elif dx > 0 and can_move(East) and (x+1, y) not in visited:
+				move(East)
+				path.append(East)
+				x = x + 1
+				moved = True
+			elif dx < 0 and can_move(West) and (x-1, y) not in visited:
+				move(West)
+				path.append(West)
+				x = x - 1
+				moved = True
+		if not moved:
+			if can_move(North) and (x, y+1) not in visited:
+				move(North)
+				path.append(North)
+				y = y + 1
+				moved = True
+			elif can_move(East) and (x+1, y) not in visited:
+				move(East)
+				path.append(East)
+				x = x + 1
+				moved = True
+			elif can_move(South) and (x, y-1) not in visited:
+				move(South)
+				path.append(South)
+				y = y - 1
+				moved = True
+			elif can_move(West) and (x-1, y) not in visited:
+				move(West)
+				path.append(West)
+				x = x - 1
+				moved = True
 		if not moved and len(path) > 0:
 			last = path.pop()
 			if last == North:
 				move(South)
+				y = y - 1
 			elif last == South:
 				move(North)
+				y = y + 1
 			elif last == East:
 				move(West)
+				x = x - 1
 			else:
 				move(East)
+				x = x + 1
 		elif not moved:
 			return False
 
@@ -156,24 +185,22 @@ def run_maze():
 	while num_drones() > 1:
 		pass
 
-quick_print("=== FAST + HEDGE CHECK ===")
+quick_print("=== 1M GOLD TEST ===")
 
 clear()
 set_world_size(32)
 
-target = 10000000
+target = 1000000
 start = get_time()
 maze_count = 0
 
 while num_items(Items.Gold) < target:
 	run_maze()
 	maze_count = maze_count + 1
-	if maze_count % 20 == 0:
-		quick_print("Maze " + str(maze_count) + " at " + str(get_time() - start) + "s, gold=" + str(num_items(Items.Gold)))
+	quick_print("Maze " + str(maze_count) + " at " + str(get_time() - start) + "s, gold=" + str(num_items(Items.Gold)))
 
 total = get_time() - start
 quick_print("---")
 quick_print("DONE: " + str(num_items(Items.Gold)) + " gold")
 quick_print("Mazes: " + str(maze_count))
 quick_print("Total time: " + str(total) + "s")
-quick_print("Per maze: " + str(total / maze_count) + "s")

@@ -296,7 +296,8 @@ seconds_to_10m = 249
 # - Auto-grass (no planting): fails (grass already ready = hay)
 
 [gold]
-seconds_to_10m = 991
+seconds_to_1m = 84
+# seconds_to_10m = 991 # moved to 1M for gold
 
 # Optimized approach (32x32 FAST-START DISTRIBUTED):
 # - 32 solvers total (31 workers + main at origin)
