@@ -295,6 +295,17 @@ seconds_to_10m = 249
 # - Infection boost: 328s (200 tick overhead per cell)
 # - Auto-grass (no planting): fails (grass already ready = hay)
 
+[power]
+seconds_to_10m = 65000  # ESTIMATED (154 power/sec measured over 15 cycles)
+
+# Approach:
+# - Uses sunflower.py with parallel drones
+# - Plant sunflowers, track petals, harvest highest first for 8x bonus
+# - Bottleneck: sunflower growth time (5.6-8.4 seconds)
+
+# Measured rate: 154 power/sec
+# 10M / 154 = ~65,000 seconds (extrapolated, not verified)
+
 [gold]
 seconds_to_1m = 84
 # seconds_to_10m = 991 # moved to 1M for gold
