@@ -296,46 +296,54 @@ seconds_to_10m = 249
 # - Auto-grass (no planting): fails (grass already ready = hay)
 
 [gold]
-seconds_to_10m = 5251
+seconds_to_10m = 991
 
-# Optimized approach (32x32 MULTI-DRONE):
-# - Use 32x32 grid (larger = more gold per maze)
-# - Spawn 3 drones at corners before maze creation
-# - All 4 drones solve in parallel with backtracking
-# - First to reach treasure wins, others wait
-# - 306 mazes, ~17s per maze, ~33K gold per maze
+# Optimized approach (32x32 FAST-START DISTRIBUTED):
+# - 32 solvers total (31 workers + main at origin)
+# - Workers use WRAP-AROUND movement for shortest path to position
+#   - Position (28,29): go 4 West + 3 South = 7 moves, not 57!
+# - Workers check measure() WHILE moving - solve immediately when maze appears
+# - Mini wait: 10 moves (5 East + 5 West) for maze creation
+# - Workers only solve if on Hedge (prevents hanging on bad positions)
+# - Even distribution: 6 rows, 5-6 workers per row across full 32x32
+# - VERIFIED: 3.24s per maze, 306 mazes, 990.77s total
+# - 10,114 gold/s efficiency
 
 # Gold mechanics:
-# - Gold yield = area * multiplier (32x32 = 32,768 gold/maze at current unlock)
+# - Gold yield = area * multiplier (32x32 = 32,768 gold/maze)
 # - Substance cost = size * (2 ^ (num_unlocked(Mazes) - 1))
-# - Multi-drone reduces solve time by ~1.4x
+# - measure() returns treasure position from anywhere in maze
 
-# Key discoveries:
-# - Larger mazes benefit MORE from multi-drone (1.36x speedup at 20x20 vs 1.26x at 10x10)
-# - Gold per maze scales with area, but solve time scales sub-linearly
-# - 32x32 multi-drone: 5,062 gold/s (vs 1,015 gold/s for 10x10 single)
-# - 5x efficiency improvement!
+# Backtracking algorithm:
+# - Priority directions toward treasure (dx/dy comparison)
+# - Track visited cells in dict
+# - Move toward treasure when possible
+# - Backtrack when stuck (pop from path, move opposite)
 
-# Size comparison (multi-drone, 10 mazes each):
-# - 10x10: 2.96s/maze, 3,200 gold, 1,081 gold/s
-# - 16x16: 4.75s/maze, 8,192 gold, 1,725 gold/s
-# - 20x20: 6.95s/maze, 12,800 gold, 1,842 gold/s
-# - 24x24: 9.04s/maze, 31,232 gold, 3,454 gold/s
-# - 28x28: 12.25s/maze, 56,320 gold, 4,598 gold/s
-# - 32x32: 17.6s/maze, 89,088 gold, 5,062 gold/s (BEST)
+# Worker distribution algorithm:
+# - Calculate rows/cols to fit num_workers (cols*rows >= num_workers)
+# - Distribute workers per row: base = num_workers // rows, extras go to first rows
+# - Position formula: px = (size * (col*2+1)) // (cols_in_row*2)
+# - Ensures full grid coverage from (2,2) to (29,29)
 
-# Multi-drone speedup by size:
-# - 10x10: 1.26x (3.72s single vs 2.96s multi)
-# - 16x16: 1.29x (6.12s single vs 4.75s multi)
-# - 20x20: 1.36x (9.42s single vs 6.95s multi)
+# Key discovery:
+# - Workers MUST be positioned BEFORE maze creation
+# - Spawn workers at (0,0), let them move to positions on empty field
+# - Main waits (moves back and forth) for workers to reach positions
+# - Workers detect maze by polling measure() != None
+# - First drone to reach treasure harvests it
 
-# Full run (32x32 multi-drone):
-# - Mazes: 306
-# - Time per maze: ~17.2s average
-# - Total: 5,251s
-# - Efficiency: 1,904 gold/s
+# Single drone baseline:
+# - 29.36s per maze, 8961s to 10M
 
-# Previous baseline (10x10 single drone):
-# - Mazes: 3,125
-# - Total: 9,855s
-# - Improvement: 47% faster (1.88x speedup)
+# Multi-drone results:
+# - Basic distribution: 4.49s per maze, 1372s to 10M (6.5x speedup)
+# - Wrap-around movement: 3.57s per maze, 1090s to 10M (8.2x speedup)
+# - VERIFIED fast-start: 3.24s per maze, 991s to 10M (9.0x speedup)
+
+# Size comparison (single drone):
+# - 10x10: 3.02s/maze, 3,200 gold, 1,061 gold/s
+# - 16x16: 7.67s/maze, 8,192 gold, 1,068 gold/s
+# - 20x20: 6.34s/maze, 12,800 gold, 2,020 gold/s
+# - 24x24: 21.79s/maze, 18,432 gold, 846 gold/s
+# - 32x32: 29.36s/maze, 32,768 gold, 1,116 gold/s
