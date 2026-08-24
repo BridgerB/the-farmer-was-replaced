@@ -34,6 +34,10 @@ def goals_cycle():
 	global goals_rotation
 	if try_buy_expand():
 		return
+	if num_items(Items.Power) < 500:
+		logs.log("goals: power low (have " + str(num_items(Items.Power)) + "), sunflower")
+		sunflower_mode()
+		return
 	if num_unlocked(Unlocks.Expand) < 30 and get_world_size() < 88:
 		pumpkin_for_expand = True
 	else:
