@@ -28,20 +28,26 @@ def build_cycle(size):
 	return idx_map
 
 def go_home():
+	logs.log("dinosaur: go_home start at " + str(get_pos_x()) + "," + str(get_pos_y()))
 	wait_ticks = 0
 	while get_pos_x() > 0:
-		move(West)
+		moved = move(West)
 		wait_ticks = wait_ticks + 1
-		if wait_ticks > 200000:
-			logs.log("dinosaur: go_home x-move exceeded, breaking")
+		if not moved:
+			logs.log("dinosaur: go_home move(West) failed at " + str(get_pos_x()) + "," + str(get_pos_y()))
+		if wait_ticks > 2000:
+			logs.log("dinosaur: go_home x-move exceeded at " + str(get_pos_x()) + "," + str(get_pos_y()) + ", breaking")
 			break
 	wait_ticks = 0
 	while get_pos_y() > 0:
-		move(South)
+		moved = move(South)
 		wait_ticks = wait_ticks + 1
-		if wait_ticks > 200000:
-			logs.log("dinosaur: go_home y-move exceeded, breaking")
+		if not moved:
+			logs.log("dinosaur: go_home move(South) failed at " + str(get_pos_x()) + "," + str(get_pos_y()))
+		if wait_ticks > 2000:
+			logs.log("dinosaur: go_home y-move exceeded at " + str(get_pos_x()) + "," + str(get_pos_y()) + ", breaking")
 			break
+	logs.log("dinosaur: go_home done at " + str(get_pos_x()) + "," + str(get_pos_y()))
 
 def chase_apples_hamiltonian(idx_map, n):
 	apples = 0
@@ -112,7 +118,10 @@ def chase_apples_hamiltonian(idx_map, n):
 		while len(tail) > apples:
 			tail.pop()
 		moves = moves + 1
+		if moves % 500 == 0:
+			logs.log("dinosaur: moves=" + str(moves) + " apples=" + str(apples))
 
+	logs.log("dinosaur: max_moves reached, apples=" + str(apples))
 	return apples
 
 def cycle():
