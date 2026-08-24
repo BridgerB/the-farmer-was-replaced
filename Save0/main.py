@@ -12,7 +12,7 @@ import dinosaur
 import hamiltonian
 
 MODE = "goals"
-CARROT_BUFFER = 1000
+CARROT_BUFFER = 5000
 goals_rotation = 0
 
 def try_buy_expand():
