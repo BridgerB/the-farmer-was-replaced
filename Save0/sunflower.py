@@ -52,7 +52,7 @@ def cycle():
 		wait_ticks = 0
 		while get_entity_type() == Entities.Sunflower and not can_harvest():
 			wait_ticks = wait_ticks + 1
-			if wait_ticks > 200000:
+			if wait_ticks > 5000:
 				logs.log("sunflower: grow-wait exceeded, breaking")
 				break
 	zones = drone.get_zone_bounds()
