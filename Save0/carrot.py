@@ -3,6 +3,15 @@ import drone
 import logs
 import poly
 
+def can_afford_carrot():
+	cost = get_cost(Entities.Carrot)
+	if cost == None:
+		return False
+	for item in cost:
+		if num_items(item) < cost[item]:
+			return False
+	return True
+
 def farm_cell(x, y):
 	if get_ground_type() != Grounds.Soil:
 		till()
@@ -10,20 +19,20 @@ def farm_cell(x, y):
 		use_item(Items.Water)
 	entity = get_entity_type()
 	if entity == None:
-		if num_items(Items.Carrot) > 0:
+		if can_afford_carrot():
 			plant(Entities.Carrot)
 			poly.check_and_plant_after(x, y)
 		return
 	if entity == Entities.Carrot:
 		if can_harvest():
 			harvest()
-			if num_items(Items.Carrot) > 0:
+			if can_afford_carrot():
 				plant(Entities.Carrot)
 				poly.check_and_plant_after(x, y)
 		return
 	if can_harvest():
 		harvest()
-	if get_entity_type() == None and num_items(Items.Carrot) > 0:
+	if get_entity_type() == None and can_afford_carrot():
 		plant(Entities.Carrot)
 		poly.check_and_plant_after(x, y)
 
