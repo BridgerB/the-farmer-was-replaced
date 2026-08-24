@@ -14,6 +14,15 @@ import hamiltonian
 MODE = "goals"
 CARROT_BUFFER = 5000
 goals_rotation = 0
+sunflower_stall_count = 0
+
+def note_sunflower_result(gained):
+	global sunflower_stall_count
+	if gained:
+		sunflower_stall_count = 0
+	else:
+		sunflower_stall_count = sunflower_stall_count + 1
+	return sunflower_stall_count
 
 def try_buy_expand():
 	cost = get_cost(Unlocks.Expand)
@@ -35,9 +44,13 @@ def goals_cycle():
 	if try_buy_expand():
 		return
 	if num_items(Items.Power) < 500:
-		logs.log("goals: power low (have " + str(num_items(Items.Power)) + "), sunflower")
+		power_before_sf = num_items(Items.Power)
+		logs.log("goals: power low (have " + str(power_before_sf) + "), sunflower")
 		sunflower_mode()
-		return
+		stall_count = note_sunflower_result(num_items(Items.Power) > power_before_sf)
+		if stall_count < 5:
+			return
+		logs.log("goals: sunflower stalled " + str(stall_count) + "x (field likely saturated with growing pumpkins), proceeding despite low power")
 	if num_unlocked(Unlocks.Expand) < 30 and get_world_size() < 88:
 		pumpkin_for_expand = True
 	else:
