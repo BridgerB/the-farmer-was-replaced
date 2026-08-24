@@ -28,10 +28,20 @@ def build_cycle(size):
 	return idx_map
 
 def go_home():
+	wait_ticks = 0
 	while get_pos_x() > 0:
 		move(West)
+		wait_ticks = wait_ticks + 1
+		if wait_ticks > 200000:
+			logs.log("dinosaur: go_home x-move exceeded, breaking")
+			break
+	wait_ticks = 0
 	while get_pos_y() > 0:
 		move(South)
+		wait_ticks = wait_ticks + 1
+		if wait_ticks > 200000:
+			logs.log("dinosaur: go_home y-move exceeded, breaking")
+			break
 
 def chase_apples_hamiltonian(idx_map, n):
 	apples = 0
@@ -109,6 +119,7 @@ def cycle():
 	logs.log("Starting dinosaur")
 	if num_items(Items.Cactus) < 100:
 		return True
+	change_hat(Hats.Straw_Hat)
 	go_home()
 	if get_entity_type() != None:
 		harvest()
