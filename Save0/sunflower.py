@@ -39,6 +39,7 @@ def make_petal_worker(x_start, x_end, y_start, y_end, target):
 
 def cycle():
 	global first_planted
+	power_before = num_items(Items.Power)
 	logs.log("sunflower cycle")
 	first_planted = None
 	drone.wait_for_workers()
@@ -48,11 +49,16 @@ def cycle():
 	drone.wait_for_workers()
 	if first_planted != None:
 		nav.go_to(first_planted[0], first_planted[1])
+		wait_ticks = 0
 		while get_entity_type() == Entities.Sunflower and not can_harvest():
-			pass
+			wait_ticks = wait_ticks + 1
+			if wait_ticks > 200000:
+				logs.log("sunflower: grow-wait exceeded, breaking")
+				break
 	zones = drone.get_zone_bounds()
 	for target in range(15, 6, -1):
 		for i in range(1, len(zones)):
 			spawn_drone(make_petal_worker(zones[i][0], zones[i][1], zones[i][2], zones[i][3], target))
 		harvest_zone_petal(zone[0], zone[1], zone[2], zone[3], target)
 		drone.wait_for_workers()
+	logs.log("sunflower: power " + str(power_before) + "->" + str(num_items(Items.Power)))
