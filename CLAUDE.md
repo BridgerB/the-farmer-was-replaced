@@ -4,473 +4,182 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Automation scripts for "The Farmer Was Replaced" - a farming game where you write Python-like code to control drones that farm crops on a grid-based field.
+Automation scripts for "The Farmer Was Replaced" — a Steam game where you write Python-like code to
+control drones farming a grid. This repo is the game's **save folder under version control**, plus a
+simulation-driven benchmark harness used to optimize each resource's farming strategy.
+
+## Repository Layout
+
+```
+Save0/          the actual game save — ALL .py files live here, flat, no subdirectories
+  save.json     game state (items, unlocks, docked files) — written by the game, do not hand-edit
+  __builtins__.py  authoritative API reference (see below)
+  sim.toml      benchmark ledger: best time + every approach tried, per resource
+docs/           copy of the in-game documentation (mechanics, scripting, unlocks)
+flake.nix       Linux automation devShell — see below
+automation/     scripts for driving the game headlessly on this NixOS/Hyprland machine
+```
+
+There is no build, test, or lint tooling. The game is the runtime.
+
+**Note:** the copy of `Save0/` the game actually reads at runtime is NOT this checkout — it's a
+separate git clone of this same repo inside the Steam Proton compat prefix:
+`~/.local/share/Steam/steamapps/compatdata/2060160/pfx/drive_c/users/steamuser/AppData/LocalLow/TheFarmerWasReplaced/TheFarmerWasReplaced/Saves`.
+Edits made here don't reach the game until committed/pulled (or copied) there; the farmer-mcp server
+(below) edits that live copy directly.
+
+## Linux Automation (headless play via MCP)
+
+`flake.nix` + `automation/*.sh` run the game inside a **private, headless Sway compositor** the real
+desktop never sees — no window, no stolen focus/input, fully isolated from the actual Hyprland
+session. This is what the [farmer-mcp](https://github.com/BridgerB/the-farmer-was-replaced-mcp)
+server drives to give Claude Code full read/write/run control of the game.
+
+```bash
+nix develop --command automation/start-env.sh    # bring up the private compositor (idempotent)
+nix develop --command automation/launch-game.sh  # launch the game into it (blocks until it exits;
+                                                  # refuses if the game's already running anywhere)
+nix develop --command automation/game-control.sh start|stop|status  # F5 / Shift+F5 / window check
+nix develop --command automation/stop-env.sh     # tear the compositor down
+```
+
+Input is injected via `xdotool`/XTEST against the compositor's private XWayland `DISPLAY`, not
+Wayland-protocol injection (`wtype`/`wlrctl`) or `ydotool`/uinput — see comments in `flake.nix` and
+`automation/start-env.sh` for why (motion-only delivery, and physical-device-grab risk, respectively).
+`launch-game.sh` replicates Steam's own launch command (captured via `/proc/<pid>/cmdline` from a real
+launch) rather than touching Steam's binary `localconfig.vdf`; re-capture it if Steam changes the
+Proton version or library layout (comment at the top of the script has the exact commands).
+
+### `__builtins__.py` is the source of truth for the API
+
+Shipped by the game, it contains typed stubs and full docstrings for every builtin (tick cost,
+return value, example usage), plus the complete `Items`, `Entities`, `Grounds`, `Unlocks`, `Hats`,
+`Leaderboards`, and direction constants. **Read it instead of guessing an API name or tick cost.**
+It also gives IntelliSense in external editors; the game auto-regenerates it.
+
+## Running Code
+
+1. Edit `.py` files in `Save0/` — the game's **File Watcher** option picks up saves live.
+   Creating or deleting a file still requires reloading the save in-game.
+2. Execute a file from the in-game editor. `main.py` is the gameplay entry point.
+3. `quick_print()` output lands in the game's output page / `output.txt`.
+
+Claude cannot run this code. Verification means reading carefully and asking the user to run it.
+
+## The Simulation Benchmark Workflow (primary activity in this repo)
+
+`simulate(filename, sim_unlocks, sim_items, sim_globals, seed, speedup)` runs a file in a throwaway
+world and returns the elapsed in-game seconds. The real farm is untouched. Nothing can be returned
+from a simulation except that time — pass data in via `sim_globals`, get results out via
+`quick_print()`.
+
+The loop this repo follows, one resource at a time:
+
+1. Write `Save0/sim_<resource>.py` — a **self-contained** script that farms to a target amount and
+   `quick_print()`s the elapsed time. It may `import` gameplay modules (`sim_power.py` drives
+   `sunflower.py`) but usually inlines its own tuned strategy.
+2. Write a tiny launcher (`mcp.py`, `run_sim.py`) that calls `simulate()` with generous starting
+   items, `Unlocks` (everything maxed), a fixed seed, and a high speedup, then execute the launcher
+   in-game.
+3. Record the result in `sim.toml` under `[<resource>]`.
+4. Iterate on the strategy; commit as `feat: sim <x> baseline` then `feat: improved <x> sim`.
+
+### `sim.toml` — read this before optimizing anything
+
+Per-resource sections holding `seconds_to_10m` (time to farm 10,000,000 of the item; gold uses
+`seconds_to_1m`) plus commented notes on the winning approach, the mechanics discovered, and — most
+valuably — **every approach already tested and rejected, with its time**. Check it before proposing
+an optimization; most obvious ideas have already been measured. Update it whenever a benchmark moves.
+
+Current bests: wood 7.94s · hay 41.48s · gold 84s (to 1M) · carrot/pumpkin/cactus (see file) ·
+weird_substance 249s · bone 723s · power ~65000s (estimated, the outlier worth attacking).
 
 ## Language Constraints (CRITICAL)
 
-The game uses a Python-like language with these limitations:
-- **No ternary expressions**: `x if cond else y` causes syntax error - use if/else blocks
-- **No import aliasing**: `import x as y` and `from x import y as z` fail
-- **No subdirectory imports**: All files must be in root, use `import module` then `module.function()`
-- **Workers cannot return data**: `spawn_drone()` workers can't send data back to main
-- **Tuples work**: `(x, y)` can be used, including as dict keys `{(1,2): value}`
-- **No f-strings**: Use `"text" + str(value)` for string concatenation
+The in-game language resembles Python but is not Python:
 
-## Game Fundamentals
-
-### The Grid
-- Field is a square grid of size `get_world_size()` (expands as you unlock)
-- Coordinates: (0,0) is bottom-left (South-West corner)
-- X increases going East, Y increases going North
-- Movement wraps around edges (move East from right edge → appear on left)
-
-### Ticks (Performance)
-- Actions (move, plant, harvest, till) cost **200 ticks**
-- Checks (get_pos, get_entity_type, measure, can_harvest) cost **1 tick**
-- `quick_print()` costs **0 ticks** (use for logging)
-- `print()` costs **1 second real time** (displays smoke above drone)
-
-### Ground Types
-- `Grounds.Grassland` - Default ground, grass grows automatically
-- `Grounds.Soil` - Created by `till()`, required for carrots/pumpkins/sunflowers/cactus
-- Calling `till()` toggles between Grassland and Soil
-
-## All Entities (Crops/Objects)
-
-### Entities.Grass
-- Grows on: Grassland or Soil
-- Growth time: ~0.5 seconds
-- Yields: `Items.Hay`
-- Plant with: `plant(Entities.Grass)`
-
-### Entities.Bush
-- Grows on: Grassland or Soil
-- Growth time: ~4 seconds
-- Yields: `Items.Wood`
-- Also used to spawn mazes with Weird_Substance
-
-### Entities.Tree
-- Grows on: Grassland or Soil
-- Growth time: ~7 seconds (SLOWER if adjacent to other trees)
-- Yields: `Items.Wood` (more than bushes)
-- Best practice: Checkerboard pattern with bushes to avoid slowdown
-
-### Entities.Carrot
-- Grows on: Soil only
-- Growth time: ~6 seconds
-- Yields: `Items.Carrot`
-- Cost: `Items.Carrot` to plant (need carrots to make carrots)
-
-### Entities.Pumpkin
-- Grows on: Soil only
-- Growth time: ~2 seconds
-- Yields: `Items.Pumpkin`
-- Cost: `Items.Carrot` to plant
-- **Special mechanics:**
-  - ~20% of pumpkins die → become `Entities.Dead_Pumpkin`
-  - Adjacent fully-grown pumpkins merge into "mega pumpkin"
-  - Yield = (number of connected pumpkins)³
-  - Water level affects growth: use `use_item(Items.Water)` when `get_water() < 0.8`
-  - **Must wait for ALL to be ready before harvesting any**
-
-### Entities.Sunflower
-- Grows on: Soil only
-- Growth time: 5.6-8.4 seconds
-- Yields: `Items.Power`
-- Cost: `Items.Carrot` to plant
-- **Special mechanics:**
-  - Each sunflower has 7-15 petals (random)
-  - `measure()` returns petal count (works BEFORE fully grown)
-  - **8x power bonus** if:
-    1. At least 10 sunflowers on field
-    2. You harvest the one(s) with MOST petals first
-  - If you harvest a lower-petal sunflower while higher exists → lose bonus on next harvest too
-  - Multiple sunflowers can tie for max petals
-
-### Entities.Cactus
-- Grows on: Soil only
-- Growth time: ~1 second
-- Yields: `Items.Cactus`
-- **Special mechanics:**
-  - Each cactus has size 0-9
-  - `measure()` returns size
-  - Harvesting triggers chain: adjacent cacti in sorted order also harvest
-  - Yield = (number of chained cacti)²
-  - Requires sorting algorithm to maximize
-
-### Entities.Hedge
-- Part of maze structure
-- Cannot be harvested, blocks movement
-- Use `can_move(direction)` to check for walls
-
-### Entities.Treasure
-- Found in center of mazes
-- `harvest()` to collect `Items.Gold`
-- Gold amount = maze side length
-
-### Entities.Dinosaur
-- Special mini-game with Dinosaur_Hat
-- Tail follows drone, `measure()` returns type number
-
-### Entities.Dead_Pumpkin
-- Failed pumpkin (~20% chance)
-- `can_harvest()` returns False
-- Disappears when you plant something new
-
-## All Items
-
-### Items.Hay
-- From: Harvesting grass
-- Used for: Unlocks, purchases
-
-### Items.Wood
-- From: Harvesting bushes and trees
-- Used for: Unlocks, purchases
-
-### Items.Carrot
-- From: Harvesting carrots
-- Used for: Planting carrots, pumpkins, sunflowers
-
-### Items.Pumpkin
-- From: Harvesting pumpkins
-- Used for: Unlocks, purchases
-
-### Items.Power
-- From: Harvesting sunflowers
-- Effect: Drone moves 2x faster automatically while you have power
-- Consumed automatically during movement
-
-### Items.Water
-- Use with: `use_item(Items.Water)`
-- Effect: Waters ground under drone
-- Check level: `get_water()` returns 0.0-1.0
-
-### Items.Fertilizer
-- Use with: `use_item(Items.Fertilizer)`
-- Effect: Reduces plant growth time by 2 seconds instantly
-- Used for: Farming Weird_Substance efficiently
-
-### Items.Weird_Substance
-- From: Harvesting fertilized grass (complex process)
-- Use with: `use_item(Items.Weird_Substance)` on a bush → creates maze
-- Amount needed for maze: `size * (2 ** max(0, num_unlocked(Unlocks.Mazes) - 1))`
-
-### Items.Gold
-- From: Maze treasures
-- Used for: Unlocks, leaderboards
-
-### Items.Cactus
-- From: Harvesting sorted cacti chains
-- Used for: Unlocks, leaderboards
-
-### Items.Bone
-- From: Dinosaur mini-game
-- Used for: Unlocks, leaderboards
-
-## Core API Functions
-
-### Movement
-```python
-move(direction)        # Move one tile (North/East/South/West), returns bool
-can_move(direction)    # Check if can move (for mazes), returns bool
-get_pos_x()           # Current X coordinate
-get_pos_y()           # Current Y coordinate
-get_world_size()      # Grid side length
-```
-
-### Farming
-```python
-plant(entity)         # Plant entity, costs resources, returns bool
-harvest()             # Harvest/destroy entity under drone, returns bool
-can_harvest()         # Check if entity is fully grown, returns bool
-till()                # Toggle ground between Grassland/Soil
-```
-
-### Sensing
-```python
-get_entity_type()     # Returns Entity or None
-get_ground_type()     # Returns Grounds.Grassland or Grounds.Soil
-get_water()           # Returns 0.0-1.0 water level
-measure()             # Entity-specific: petals/size/treasure_pos
-measure(direction)    # Measure adjacent entity
-get_companion()       # For polyculture bonus, returns (type, (x,y)) or None
-```
-
-### Items
-```python
-num_items(item)           # How many of item you have
-use_item(item)            # Use item (Water/Fertilizer/Weird_Substance)
-use_item(item, count)     # Use multiple
-```
-
-### Multi-Drone
-```python
-spawn_drone(function)     # Spawn worker running function, returns handle or None
-max_drones()              # Maximum allowed drones
-num_drones()              # Current drone count
-wait_for(handle)          # Wait for specific drone, get return value
-has_finished(handle)      # Check if drone is done
-```
-
-### Utility
-```python
-quick_print(msg)          # Log to output.txt (0 ticks)
-print(msg)                # Display in smoke (1 second delay)
-get_time()                # Seconds since game start
-get_tick_count()          # Total ticks executed
-random()                  # Random float [0, 1)
-clear()                   # Reset entire farm
-```
-
-### Unlocks
-```python
-unlock(unlock)            # Purchase unlock
-num_unlocked(thing)       # Check unlock level (0 = locked)
-get_cost(thing)           # Get cost dict {Item: amount}
-```
-
-### Debug
-```python
-set_execution_speed(n)    # Limit speed (1 = base, 10 = fast, 0.5 = slow)
-set_world_size(n)         # Shrink grid for testing (min 3)
-```
+- **No ternary expressions** — `x if c else y` is a syntax error; use if/else blocks
+- **No f-strings** — concatenate: `"n: " + str(n)`
+- **No import aliasing** (`import x as y`, `from x import y as z`) and no subdirectory imports —
+  every file sits flat in `Save0/`, imported as `import nav` then `nav.go_to(...)`
+- **Spawned drones cannot return data** — `spawn_drone()` workers communicate only by mutating the
+  world; the spawner must re-scan afterwards
+- Tuples work, including as dict keys: `{(x, y): value}`
+- Files are indented with **tabs**
 
 ## Architecture
 
-### File Structure
+### Shared utilities
 
-**Utils (shared helpers):**
-- `nav.py` - Navigation utilities
-- `drone.py` - Multi-drone coordination
-- `resources.py` - Resource tracking and auto-crop selection
-- `logs.py` - Logging wrapper
+- **`nav.py`** — `go_to(x, y)`; `s_shape_range(x_start, x_end, y_start, y_end)` returns positions in
+  a serpentine order (alternating columns reversed) so consecutive cells are adjacent;
+  `traverse_zone(x_start, x_end, y_start, y_end, cell_fn)` walks that order calling `cell_fn(x, y)`.
+- **`drone.py`** — splits the field into vertical zones, one per available drone.
+  `get_zone_bounds()` returns `[x_start, x_end, y_start, y_end]` per zone (remainder columns go to
+  the *first* zones). `run_parallel(worker_factory, main_fn)` is the standard entry: wait for idle,
+  spawn workers for zones 1..n, run `main_fn` on zone 0, wait for all to finish.
+- **`resources.py`** — `get_next_crop()` drives auto mode: bootstrap hay → wood → carrot, then keep
+  power above `POWER_THRESHOLD`, carrots above `CARROT_MIN`, enough Weird_Substance for one maze
+  (`size * 2**(num_unlocked(Unlocks.Mazes)-1)`), else farm whatever is lowest.
+- **`logs.py`** — thin `quick_print()` wrapper (0 ticks, unlike `print()` which costs 1 real second).
+- **`poly.py`** — polyculture companion bookkeeping via `get_companion()`; not yet wired into a cycle.
 
-**Crops (each exports `cycle()`):**
-- `hay.py` - Grass farming
-- `wood.py` - Tree/bush farming
-- `carrot.py` - Carrot farming
-- `pumpkin.py` - Pumpkin mega-farm
-- `sunflower.py` - Sunflower power farming
-- `substance.py` - Weird substance production
-- `maze.py` - Maze solving for gold
+### Crop modules — each exports `cycle()`
 
-**Entry point:**
-- `main.py` - Mode-based controller
+`hay.py` `wood.py` `carrot.py` `pumpkin.py` `sunflower.py` `substance.py` `maze.py` (gold)
+`cactus.py` `dinosaur.py` (bones). `main.py` sets a module-level `MODE` string and dispatches to
+them in an infinite loop; `hamiltonian.py` and `dinosaur_tiny.py` are one-shot bone runs.
 
-### nav.py - Navigation
+**Zone-parallel pattern** (hay, wood, carrot, substance, cactus): a `cell_fn(x, y)` doing
+till/harvest/plant, a `*_zone(x_start, x_end, y_start, y_end)` wrapper, a `make_worker(...)` closure
+factory taking the same four bounds, and `cycle()` calling `drone.run_parallel(make_worker, farm_zone)`.
+Worker factories exist because the four bounds must be captured in a closure — spawned functions take
+no arguments.
 
-```python
-go_to(x, y)
-# Moves drone to target coordinates using cardinal directions
+Crops with global ordering constraints break the pattern:
 
-s_shape_range(start_col, end_col, size)
-# Returns list of [x, y] positions in S-pattern for efficient traversal
-# Even columns: bottom to top
-# Odd columns: top to bottom
-# Minimizes movement between columns
+- **`pumpkin.py`** — every pumpkin must be fully grown before *any* is harvested; one `harvest()`
+  then collects the whole merged mega-pumpkin (yield = connected count³). Water while planting.
+- **`sunflower.py`** — plant in parallel recording `measure()` petal counts, then run one
+  synchronized pass per petal value 15→7, so the highest-petal flowers always go first (8x power
+  bonus, lost and penalized if the order breaks).
+- **`cactus.py`** — plant all, wait for all, then bubble-sort the grid by `measure()` size using
+  `swap(East)` / `swap(North)` (rows in parallel, then columns), and harvest (0,0) once to chain the
+  whole sorted field (yield = chain length²).
+- **`maze.py`** — position many drones across the field *before* the maze exists, plant a bush and
+  `use_item(Items.Weird_Substance)` to spawn it, then each drone polls `measure()` (returns the
+  treasure position from anywhere inside) and runs DFS-with-backtracking toward it; first to arrive
+  harvests.
+- **`dinosaur.py`** — snake mini-game under `Hats.Dinosaur_Hat`. BFS toward the apple with a
+  reachability/tail-safety check; `hamiltonian.py` instead follows a fixed Hamiltonian cycle over a
+  22–24 grid, which never self-traps and is what produced the recorded bone benchmark.
 
-traverse_zone(start_col, end_col, cell_fn)
-# Traverses zone calling cell_fn(x, y) at each position
-```
+## Code Style
 
-### drone.py - Multi-Drone Coordination
+- Gameplay modules: no comments, small pure functions, early returns, tabs.
+- `sim_*.py`: heavily commented banner-style headers documenting strategy, args, and measured
+  performance — these are lab notes and are meant to be verbose.
+- Guard before acting: `if get_entity_type() == None` before `plant()`, check item counts before
+  planting anything that costs carrots, `drone.wait_for_workers()` before spawning a new batch.
 
-```python
-get_zone_bounds()
-# Splits field into vertical zones, one per drone
-# Returns list of [start_col, end_col] pairs
-# Last zone gets remainder columns
+## Performance Notes
 
-wait_for_workers()
-# Blocks until only main drone remains (num_drones() == 1)
+- Actions (`move`, `plant`, `harvest`, `till`, `swap`, `use_item`, `change_hat`) cost 200 ticks;
+  sensing (`get_pos_*`, `get_entity_type`, `measure`, `can_harvest`) costs 1. `quick_print()` is free.
+- Holding `Items.Power` halves movement cost to 100 ticks — it is consumed automatically.
+- 32 drones is the cap at full unlocks; one drone per column is the workhorse layout, and the
+  benchmarks show drone throughput — not plant growth — is usually the bottleneck.
+- Wrap-around movement matters: moving off an edge reappears on the opposite side, so the shortest
+  path to a far column is often backwards. `sim_gold.py` depends on this.
+- Skipping a `can_harvest()` check and just harvesting can be faster than checking.
 
-spawn_zone_workers(worker_factory)
-# Spawns workers for zones 1+ (main handles zone 0)
-# worker_factory(start_col, end_col) must return a function
+## Gotchas
 
-get_main_zone()
-# Returns [start_col, end_col] for zone 0 (main drone's zone)
-
-run_parallel(worker_factory, main_fn)
-# Complete parallel operation:
-# 1. Wait for any existing workers
-# 2. Spawn zone workers
-# 3. Main executes main_fn on zone 0
-# 4. Wait for all workers to finish
-```
-
-### resources.py - Resource Management
-
-```python
-has_hay() / has_wood() / has_carrot()
-# Quick checks for non-zero amounts
-
-get_lowest_resource()
-# Returns name of resource with lowest count
-# Checks: hay, wood, carrot, pumpkin, power, gold
-
-get_next_crop()
-# Auto-mode logic:
-# 1. If no hay → "hay"
-# 2. If no wood → "wood"
-# 3. If no carrot → "carrot"
-# 4. Otherwise → lowest resource
-```
-
-### main.py - Entry Point
-
-```python
-MODE = "auto"  # or "hay", "wood", "carrot", "pumpkin", "sunflower", "substance", "gold"
-
-run_crop(name)
-# Dispatches to appropriate crop cycle
-
-auto_cycle()
-# Uses get_next_crop() to pick and farm
-
-pumpkin_mode()
-# Maintains minimum hay/wood/carrot before pumpkins
-
-sunflower_mode()
-# Farms sunflowers, maintains carrot supply
-
-main()
-# Infinite loop running selected mode
-```
-
-## Crop Implementation Patterns
-
-### Simple Crop Pattern (hay, wood, carrot)
-
-```python
-def farm_cell(x, y):
-    # Prepare ground if needed
-    if get_ground_type() != Grounds.Soil:
-        till()
-    # Harvest if ready
-    if can_harvest():
-        harvest()
-    # Plant if empty
-    if get_entity_type() == None:
-        plant(Entities.Something)
-
-def farm_zone(start_col, end_col):
-    nav.traverse_zone(start_col, end_col, farm_cell)
-
-def make_worker(start_col, end_col):
-    def worker():
-        farm_zone(start_col, end_col)
-    return worker
-
-def cycle():
-    drone.run_parallel(make_worker, farm_zone)
-```
-
-### Pumpkin Pattern (synchronized harvest)
-
-1. Plant all pumpkins with water
-2. Track positions that aren't ready
-3. Loop until all ready (checking not_ready list)
-4. Single harvest() triggers mega-pumpkin collection
-5. All drones must sync before harvest
-
-### Sunflower Pattern (ordered harvest)
-
-1. Plant in parallel across zones
-2. Wait for all to be harvestable
-3. For each petal count 15 → 7:
-   - All drones harvest that petal count from their zones
-   - Wait for sync before next petal count
-4. Ensures highest petals harvested first for 8x bonus
-
-### Maze Pattern (parallel pathfinding)
-
-1. Check substance requirements
-2. Plant bush at (0,0), use Weird_Substance
-3. `measure()` returns treasure position
-4. Spawn multiple drones with different direction priorities
-5. Each uses backtracking: visited list + path stack
-6. First to reach treasure harvests it
-
-## Code Style Guidelines
-
-- Pure functional code, no comments
-- Early returns where possible
-- Use closures for worker factories
-- Use `nav.s_shape_range()` for efficient traversal
-- Always `drone.wait_for_workers()` before spawning new workers
-- Check resource requirements before expensive operations
-
-## Common Patterns
-
-### Closure-based Worker Factory
-```python
-def make_worker(start_col, end_col):
-    def worker():
-        # Worker code here, can access start_col, end_col
-        pass
-    return worker
-```
-
-### Zone-based Parallel Farming
-```python
-def cycle():
-    drone.wait_for_workers()
-    drone.spawn_zone_workers(make_worker)
-    zone = drone.get_main_zone()
-    do_work(zone[0], zone[1])
-    drone.wait_for_workers()
-```
-
-### Petal Map for Sunflowers
-```python
-petal_map = {}
-for i in range(7, 16):
-    petal_map[i] = []
-# During planting:
-petals = measure()
-petal_map[petals].append((x, y))
-```
-
-### Waiting for Growth
-```python
-# Wait on a known position
-nav.go_to(x, y)
-while not can_harvest():
-    pass
-```
-
-### Safe Planting
-```python
-if get_entity_type() == None and num_items(Items.Carrot) > 0:
-    plant(Entities.Sunflower)
-```
-
-## Debugging Tips
-
-- Use `quick_print()` liberally - it's free (0 ticks)
-- `set_execution_speed(1)` to slow down and watch
-- `set_world_size(3)` to test on tiny grid
-- Check `num_drones()` if workers seem stuck
-- Verify `can_harvest()` before assuming entity is ready
-- `get_entity_type() == None` check before planting
-
-## Performance Optimization
-
-- Minimize movement - use S-shape patterns
-- Parallel operations via zone splitting
-- `quick_print()` over `print()` (0 vs 1000ms)
-- Check before acting: `if can_harvest()` before `harvest()`
-- Power from sunflowers = 2x movement speed
-- Avoid adjacent trees (they slow each other)
-- Water pumpkins for faster growth
-
-## Known Gotchas
-
-1. `Entities.Hay` doesn't exist - use `Entities.Grass` (yields hay)
-2. Workers can't return values - must scan after they finish
-3. Pumpkin harvest() on one triggers all connected
-4. Sunflower bonus is lost if you harvest wrong order
-5. `till()` toggles - calling twice returns to grassland
-6. Dead pumpkins exist but can't be harvested
-7. Maze `measure()` works from anywhere inside maze
+1. `Entities.Hay` does not exist — plant `Entities.Grass`, which yields `Items.Hay`.
+2. `till()` toggles; calling it twice returns the tile to grassland.
+3. Fertilized grass yields Weird_Substance, but only if fertilized *while still growing* — grass
+   that is already ripe yields plain hay.
+4. Dead pumpkins (~20% of plantings) can never be harvested; planting over them clears them.
+5. `set_world_size()` (min 3) and `clear()` are destructive to the live farm — fine inside a
+   simulation, deliberate everywhere else.
+6. `Save0/CLAUDE.md` is a copy of this file kept in the save folder; update both together.
