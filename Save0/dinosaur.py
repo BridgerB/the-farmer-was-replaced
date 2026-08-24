@@ -54,11 +54,16 @@ def chase_apples_hamiltonian(idx_map, n):
 
 		head_idx = idx_map[(hx, hy)]
 
-		if len(tail) > 0:
-			tail_idx = idx_map[tail[len(tail) - 1]]
-			tail_gap = (tail_idx - head_idx) % n
-		else:
-			tail_gap = n - 1
+		# Tightest constraint = closest tail segment in cycle order, not just
+		# the oldest one. Shortcuts mean the tail is no longer a contiguous
+		# cyclic range behind head, so checking only the oldest segment can
+		# let a "safe" shortcut jump straight over a middle segment.
+		min_tail_gap = n - 1
+		for seg in tail:
+			seg_idx = idx_map[seg]
+			gap = (seg_idx - head_idx) % n
+			if gap < min_tail_gap:
+				min_tail_gap = gap
 
 		best_dir = None
 		best_remaining = n + 1
@@ -75,23 +80,15 @@ def chase_apples_hamiltonian(idx_map, n):
 				continue
 			cand_idx = idx_map[(nx, ny)]
 			fwd_gap = (cand_idx - head_idx) % n
-			if fwd_gap == 0 or fwd_gap > tail_gap:
+			if fwd_gap == 0 or fwd_gap >= min_tail_gap:
 				continue
 			if apple_idx >= 0:
 				remaining = (apple_idx - cand_idx) % n
 			else:
-				remaining = -fwd_gap
+				remaining = fwd_gap
 			if remaining < best_remaining:
 				best_remaining = remaining
 				best_dir = d
-
-		if best_dir == None:
-			cycle_next_idx = (head_idx + 1) % n
-			for d in [North, East, South, West]:
-				nx, ny = get_next_position(hx, hy, d)
-				if (nx, ny) in idx_map and idx_map[(nx, ny)] == cycle_next_idx:
-					best_dir = d
-					break
 
 		if best_dir == None:
 			logs.log("STUCK at " + str(hx) + "," + str(hy) + " apples=" + str(apples))
