@@ -29,8 +29,13 @@ def wait_and_replant():
 			if entity == Entities.Pumpkin:
 				if not can_harvest():
 					all_ready = False
+					wait_ticks = 0
 					while not can_harvest():
 						if get_entity_type() != Entities.Pumpkin:
+							break
+						wait_ticks = wait_ticks + 1
+						if wait_ticks > 200000:
+							logs.log("pumpkin: grow-wait exceeded at " + str(pos[0]) + "," + str(pos[1]) + ", breaking")
 							break
 			elif entity == Entities.Dead_Pumpkin or entity == None:
 				all_ready = False
