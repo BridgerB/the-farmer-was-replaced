@@ -46,10 +46,15 @@ def goals_cycle():
 	goals_rotation = goals_rotation + 1
 	slot = goals_rotation % 4
 
-	if num_items(Items.Gold) < 1000000 and slot == 0:
-		logs.log("goals: gold (have " + str(num_items(Items.Gold)) + ")")
-		maze.cycle()
-	elif pumpkin_for_expand and slot != 3:
+	# NOTE: gold/maze.cycle() deliberately excluded from this rotation.
+	# A losing maze solver drone (any spawned solver that doesn't reach the
+	# treasure first) has no give-up condition in its search loop and can
+	# wander the maze's Hedge network forever, becoming a permanently
+	# orphaned drone that then hangs every future drone.wait_for_workers()
+	# call (used by hay/wood/carrot/pumpkin/sunflower/cactus) - this was
+	# the likely cause of several silent full-execution stalls. Revisit
+	# with a bounded/single-drone maze solver before re-enabling.
+	if pumpkin_for_expand and slot != 3:
 		logs.log("goals: pumpkin-for-expand (have " + str(num_items(Items.Pumpkin)) + ")")
 		pumpkin_mode()
 	else:
