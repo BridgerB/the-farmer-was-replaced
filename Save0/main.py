@@ -77,7 +77,7 @@ def goals_cycle():
 		if stall_count < 5:
 			return
 		logs.log("goals: sunflower stalled " + str(stall_count) + "x (field likely saturated with growing pumpkins), proceeding despite low power")
-	if num_items(Items.Gold) < 1000000:
+	if num_unlocked(Unlocks.Leaderboard) == 0 and num_items(Items.Gold) < 1000000:
 		logs.log("goals: gold low (have " + str(num_items(Items.Gold)) + "), maze")
 		maze.cycle()
 		return
