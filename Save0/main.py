@@ -39,9 +39,28 @@ def try_buy_expand():
 		return True
 	return False
 
+def try_buy_leaderboard():
+	if num_unlocked(Unlocks.Leaderboard) > 0:
+		return False
+	cost = get_cost(Unlocks.Leaderboard)
+	if cost == None:
+		return False
+	can_afford = True
+	for item in cost:
+		if num_items(item) < cost[item]:
+			can_afford = False
+	if can_afford:
+		logs.log("LEADERBOARD AFFORDABLE - purchasing")
+		unlock(Unlocks.Leaderboard)
+		logs.log("bought Unlocks.Leaderboard")
+		return True
+	return False
+
 def goals_cycle():
 	global goals_rotation
 	if try_buy_expand():
+		return
+	if try_buy_leaderboard():
 		return
 	if num_items(Items.Power) < 500:
 		power_before_sf = num_items(Items.Power)
