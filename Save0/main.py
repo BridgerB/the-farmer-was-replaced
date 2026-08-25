@@ -39,12 +39,19 @@ def try_buy_expand():
 		return True
 	return False
 
+leaderboard_cost_logged = False
+
 def try_buy_leaderboard():
+	global leaderboard_cost_logged
 	if num_unlocked(Unlocks.Leaderboard) > 0:
 		return False
 	cost = get_cost(Unlocks.Leaderboard)
 	if cost == None:
 		return False
+	if not leaderboard_cost_logged:
+		leaderboard_cost_logged = True
+		for item in cost:
+			logs.log("leaderboard cost: " + str(item) + " needs " + str(cost[item]) + ", have " + str(num_items(item)))
 	can_afford = True
 	for item in cost:
 		if num_items(item) < cost[item]:
@@ -70,6 +77,11 @@ def goals_cycle():
 		if stall_count < 5:
 			return
 		logs.log("goals: sunflower stalled " + str(stall_count) + "x (field likely saturated with growing pumpkins), proceeding despite low power")
+	if num_items(Items.Gold) < 1000000:
+		logs.log("goals: gold low (have " + str(num_items(Items.Gold)) + "), maze")
+		maze.cycle()
+		return
+
 	if num_unlocked(Unlocks.Expand) < 30 and get_world_size() < 88:
 		pumpkin_for_expand = True
 	else:
@@ -78,14 +90,6 @@ def goals_cycle():
 	goals_rotation = goals_rotation + 1
 	slot = goals_rotation % 4
 
-	# NOTE: gold/maze.cycle() deliberately excluded from this rotation.
-	# A losing maze solver drone (any spawned solver that doesn't reach the
-	# treasure first) has no give-up condition in its search loop and can
-	# wander the maze's Hedge network forever, becoming a permanently
-	# orphaned drone that then hangs every future drone.wait_for_workers()
-	# call (used by hay/wood/carrot/pumpkin/sunflower/cactus) - this was
-	# the likely cause of several silent full-execution stalls. Revisit
-	# with a bounded/single-drone maze solver before re-enabling.
 	if pumpkin_for_expand and slot != 3:
 		logs.log("goals: pumpkin-for-expand (have " + str(num_items(Items.Pumpkin)) + ")")
 		pumpkin_mode()
