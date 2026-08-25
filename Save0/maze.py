@@ -1,5 +1,6 @@
 import nav
 import logs
+import substance
 
 def opposite(direction):
 	if direction == North:
@@ -122,6 +123,8 @@ def cycle():
 	size = get_world_size()
 	substance_needed = size * (2 ** max(0, num_unlocked(Unlocks.Mazes) - 1))
 	if num_items(Items.Weird_Substance) < substance_needed:
+		logs.log("maze: substance low (have " + str(num_items(Items.Weird_Substance)) + ", need " + str(substance_needed) + "), farming substance")
+		substance.cycle()
 		return
 	nav.go_to(0, 0)
 	if get_ground_type() == Grounds.Soil:
