@@ -55,6 +55,8 @@ def chase_apples_hamiltonian(idx_map, n):
 	tail = []
 	apple_idx = -1
 	max_moves = n * 20
+	stall_limit = n * 2
+	moves_since_gain = 0
 
 	while moves < max_moves:
 		hx = get_pos_x()
@@ -62,6 +64,7 @@ def chase_apples_hamiltonian(idx_map, n):
 
 		if get_entity_type() == Entities.Apple:
 			apples = apples + 1
+			moves_since_gain = 0
 			info = measure()
 			if info != None:
 				apple_idx = idx_map[(info[0], info[1])]
@@ -118,6 +121,10 @@ def chase_apples_hamiltonian(idx_map, n):
 		while len(tail) > apples:
 			tail.pop()
 		moves = moves + 1
+		moves_since_gain = moves_since_gain + 1
+		if moves_since_gain > stall_limit:
+			logs.log("dinosaur: no apple progress for " + str(stall_limit) + " moves, giving up at " + str(moves) + ", apples=" + str(apples))
+			return apples
 		if moves % 500 == 0:
 			logs.log("dinosaur: moves=" + str(moves) + " apples=" + str(apples))
 
