@@ -59,9 +59,19 @@ fi
 
 STEAM_ROOT="$HOME/.local/share/Steam"
 PROTON="$STEAM_ROOT/steamapps/common/Proton - Experimental"
-RUNTIME="/run/media/bridger/6TB/SteamLibrary/steamapps/common/SteamLinuxRuntime_4"
 GAME_DIR="$STEAM_ROOT/steamapps/common/The Farmer Was Replaced"
 APPID=2060160
+
+# The external "6TB" library drive's mountpoint name isn't stable across
+# reboots - if /run/media/bridger/6TB is already claimed by an unrelated
+# mount, udisks appends a suffix (6TB1, 6TB2, ...). Resolve it by label
+# instead of hardcoding the path.
+SIXTB_MOUNT="$(findmnt -n -o TARGET LABEL=6TB 2>/dev/null | head -1)"
+if [ -z "$SIXTB_MOUNT" ]; then
+	echo "ERROR: no mounted filesystem with label '6TB' found - mount the SteamLibrary drive first" >&2
+	exit 1
+fi
+RUNTIME="$SIXTB_MOUNT/SteamLibrary/steamapps/common/SteamLinuxRuntime_4"
 
 exec steam-run env \
 	SteamAppId=$APPID \
@@ -75,7 +85,7 @@ exec steam-run env \
 	STEAM_COMPAT_TRANSCODED_MEDIA_PATH="$STEAM_ROOT/steamapps/shadercache/$APPID" \
 	STEAM_COMPAT_MOUNTS="$PROTON:$RUNTIME" \
 	STEAM_COMPAT_TOOL_PATHS="$PROTON:$RUNTIME" \
-	STEAM_COMPAT_LIBRARY_PATHS="$STEAM_ROOT/steamapps:/run/media/bridger/6TB/SteamLibrary/steamapps" \
+	STEAM_COMPAT_LIBRARY_PATHS="$STEAM_ROOT/steamapps:$SIXTB_MOUNT/SteamLibrary/steamapps" \
 	STEAM_COMPAT_PROTON=1 \
 	STEAM_COMPAT_FLAGS=search-cwd \
 	PROTON_CRASH_REPORT_DIR=/tmp/proton_crashreports \
