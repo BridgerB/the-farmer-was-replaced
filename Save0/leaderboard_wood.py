@@ -6,18 +6,22 @@
 # Goal: farm 10,000,000,000 wood as fast as possible, then TERMINATE.
 # Reuses wood.py's cycle() unchanged.
 #
-# Defensive: force size 32 like the other categories. Wood's per-cycle
-# yield is roughly linear in cell count (not squared/cubed/multiplier-
-# compounding like Cactus/Pumpkin/Sunflowers), so it's unlikely to complete
-# in a handful of cycles regardless of world size given the 10B goal - but
-# after getting burned twice by "should be safe" assumptions (Cactus,
-# Sunflowers both OOM-crashed the game via leaderboard_run()'s auto-retry
-# leak), force it anyway rather than risk a third crash.
+# REVERTED the set_world_size(32) forcing added after the Cactus/Sunflowers
+# crashes - that diagnosis doesn't apply here. Confirmed via output.txt: the
+# Wood run OOM-crashed the game (journalctl: RSS ~24GB) after ~6 minutes
+# with ONLY "wood cycle" log lines - never a single "run complete", so this
+# isn't leaderboard_run()'s auto-retry-on-fast-completion leak at all. It
+# looks like spawning/despawning worker drones at high frequency leaks
+# memory in the engine regardless of category, and forcing size 32 made it
+# WORSE here: each cycle's yield is ~(32/88)^2 smaller, so reaching the 10B
+# goal needs far MORE cycles (more total drone spawns) than at native size.
+# sim.toml records single-tree harvests yielding ~409,600 wood at native
+# size - leave world size at its full-unlock default to keep total cycles
+# (and drone spawns) as low as possible.
 # -----------------------------------------------------------------------------
 import wood
 import logs
 
-set_world_size(32)
 GOAL = 10000000000
 while num_items(Items.Wood) < GOAL:
 	wood.cycle()
