@@ -28,3 +28,20 @@ def cycle():
 	needed = poly.get_needed_companion_types()
 	for comp_type in needed:
 		poly.fulfill_companions_for_type(comp_type)
+
+def farm_zone_until(x_start, x_end, y_start, y_end, goal):
+	while num_items(Items.Wood) < goal:
+		nav.traverse_zone(x_start, x_end, y_start, y_end, farm_cell)
+
+def make_worker_until(x_start, x_end, y_start, y_end, goal):
+	def worker():
+		farm_zone_until(x_start, x_end, y_start, y_end, goal)
+	return worker
+
+def run_until(goal):
+	zones = drone.get_zone_bounds()
+	for i in range(1, len(zones)):
+		spawn_drone(make_worker_until(zones[i][0], zones[i][1], zones[i][2], zones[i][3], goal))
+	zone = zones[0]
+	farm_zone_until(zone[0], zone[1], zone[2], zone[3], goal)
+	drone.wait_for_workers()

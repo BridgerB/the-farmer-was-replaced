@@ -4,22 +4,18 @@
 # Started via leaderboard_run(Leaderboards.Carrots, "leaderboard_carrots", speedup).
 # Fixed starting conditions: everything unlocked, plenty of carrot seed
 # and wood/hay. Goal: farm 2,000,000,000 carrot as fast as possible, then
-# TERMINATE. Reuses carrot.py's cycle() unchanged.
+# TERMINATE.
 #
-# NOT forcing set_world_size(32) here - see leaderboard_wood.py. That "fix"
-# (added defensively after Cactus/Sunflowers OOM-crashed) turned out to be
-# wrong for large-target categories: the Wood run crashed anyway with only
-# continuous "wood cycle" logs (never a repeat/retry), pointing to a plain
-# drone-spawn-frequency memory leak rather than the auto-retry pathology.
-# Forcing a smaller world size only multiplies the number of cycles (and
-# drone spawns) needed to reach a multi-billion goal, making it worse.
-# Leave world size at its full-unlock default to minimize total cycles.
+# Does NOT loop carrot.py's cycle() - same reasoning as leaderboard_wood.py:
+# repeatedly respawning worker drones (drone.run_parallel() every cycle)
+# leaks memory in the engine at scale, and 2B carrot needs thousands of
+# cycles regardless of world size. Uses carrot.py's run_until(goal) instead,
+# which spawns each zone worker exactly ONCE and loops internally.
 # -----------------------------------------------------------------------------
 import carrot
 import logs
 
 GOAL = 2000000000
-while num_items(Items.Carrot) < GOAL:
-	carrot.cycle()
+carrot.run_until(GOAL)
 
 logs.log("leaderboard carrots run complete: " + str(num_items(Items.Carrot)))
